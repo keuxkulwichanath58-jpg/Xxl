@@ -4,18 +4,24 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
--- สถานะฟังก์ชัน (Toggle States)
 local AimbotEnabled = false
 local ESPEnabled = false
 local SpeedEnabled = false
 local CurrentSpeed = 16
--- ฟังก์ชันหาตำแหน่ง Head หรือ HumanoidRootPart ที่ถูกต้องและแม่นยำที่สุด
-local function getTargetPart(character)
+-- ฟังก์ชันค้นหาพาร์ทหัว (Head) ที่แม่นยำที่สุด รองรับหลายรูปแบบตัวละคร
+local function getTargetHead(character)
 if not character then return nil end
--- พยายามหา Head ก่อน ถ้าไม่มีให้ใช้ HumanoidRootPart แทน
-return character:FindFirstChild("Head") or character:FindFirstChild("HumanoidRootPart")
+local head = character:FindFirstChild("Head")
+if head then return head end
+-- ค้นหาเผื่อกรณีโมเดลเปลี่ยนชื่อหรือโครงสร้าง R15/R6
+for _, child in ipairs(character:GetChildren()) do
+if child:IsA("BasePart") and (child.Name:lower():find("head") or child.Name:lower():find("upper")) then
+return child
 end
--- สร้างหน้าต่าง GUI (ScreenGui) แบบรองรับระบบรีเซ็ตตัวละคร (ResetOnSpawn = false)
+end
+return character:FindFirstChild("HumanoidRootPart")
+end
+-- สร้างหน้าต่าง GUI (ScreenGui)
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "ModMenuGui"
 ScreenGui.ResetOnSpawn = false
@@ -25,8 +31,7 @@ ScreenGui.Parent = game:GetService("CoreGui")
 else
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 end
--- STREAMING_CHUNK:Creating Floating Toggle Button with Image...
--- ปุ่มเปิด/ปิด UI รูปภาพ (image.png)
+-- STREAMING_CHUNK:Creating Floating Toggle Button...
 local ToggleButton = Instance.new("ImageButton")
 ToggleButton.Name = "ToggleButton"
 ToggleButton.Size = UDim2.new(0, 60, 0, 60)
@@ -34,13 +39,12 @@ ToggleButton.Position = UDim2.new(0, 20, 0, 20)
 ToggleButton.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 ToggleButton.BorderColor3 = Color3.fromRGB(0, 255, 204)
 ToggleButton.BorderSizePixel = 2
-ToggleButton.Image = "rbxassetid://0" -- แทนที่ด้วย Asset ID ของรูปภาพ หรือลิงก์ที่รองรับ
+ToggleButton.Image = "rbxassetid://0" -- สามารถแทนที่ด้วย Asset ID หรือลิงก์รูปภาพ
 ToggleButton.Parent = ScreenGui
 local UICornerBtn = Instance.new("UICorner")
 UICornerBtn.CornerRadius = UDim.new(1, 0)
 UICornerBtn.Parent = ToggleButton
 -- STREAMING_CHUNK:Creating Main Script Window...
--- หน้าต่างเมนูหลัก
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 280, 0, 320)
@@ -53,11 +57,10 @@ MainFrame.Parent = ScreenGui
 local UICornerMain = Instance.new("UICorner")
 UICornerMain.CornerRadius = UDim.new(0, 10)
 UICornerMain.Parent = MainFrame
--- ส่วนหัวของเมนู (ใช้ลากหน้าต่างได้)
 local Header = Instance.new("TextLabel")
 Header.Size = UDim2.new(1, 0, 0, 40)
 Header.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-Header.Text = "  Control Panel (Fixed)"
+Header.Text = "  Control Panel (Fixed V2)"
 Header.TextColor3 = Color3.fromRGB(0, 255, 204)
 Header.TextSize = 16
 Header.Font = Enum.Font.SourceSansBold
@@ -69,7 +72,7 @@ UICornerHeader.Parent = Header
 ToggleButton.MouseButton1Click:Connect(function()
 MainFrame.Visible = not MainFrame.Visible
 end)
--- STREAMING_CHUNK:Adding Features (Aimbot, ESP, Speed)...
+-- STREAMING_CHUNK:Adding Toggles and Aimbot Logic...
 local function createToggle(name, yPos, callback)
 local Label = Instance.new("TextLabel")
 Label.Size = UDim2.new(0, 160, 0, 30)
@@ -108,7 +111,7 @@ end
 callback(state)
 end)
 end
--- 1. ฟังก์ชันล็อกหัวที่ปรับปรุงให้แม่นยำขึ้นและไม่ค้างเมื่อเปลี่ยนรอบเกม
+-- 1. ฟังก์ชันล็อกหัวปรับปรุงใหม่ให้แม่นยำ
 createToggle("1. ล็อกหัว (Aimbot)", 60, function(state)
 AimbotEnabled = state
 end)
@@ -116,14 +119,15 @@ RunService.RenderStepped:Connect(function()
 if AimbotEnabled then
 local closestPlayer = nil
 local shortestDistance = math.huge
+local mousePos = UserInputService:GetMouseLocation()
 for _, player in ipairs(Players:GetPlayers()) do
 if player ~= LocalPlayer and player.Character then
 local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-local targetPart = getTargetPart(player.Character)
-if humanoid and humanoid.Health > 0 and targetPart then
-local screenPos, onScreen = Camera:WorldToScreenPoint(targetPart.Position)
+local headPart = getTargetHead(player.Character)
+-- ตรวจสอบว่าผู้เล่นยังมีชีวิตและอยู่ฝ่ายตรงข้าม (ตรวจสอบ Team ตามโครงสร้างเกมทั่วไปได้)
+if humanoid and humanoid.Health > 0 and headPart then
+local screenPos, onScreen = Camera:WorldToScreenPoint(headPart.Position)
 if onScreen then
-local mousePos = UserInputService:GetMouseLocation()
 local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
 if distance < shortestDistance then
 shortestDistance = distance
@@ -134,32 +138,25 @@ end
 end
 end
 if closestPlayer then
-local targetPart = getTargetPart(closestPlayer.Character)
-if targetPart then
--- ปรับมุมมองกล้องให้ตรงตำแหน่งหัวทันทีแบบสมูท
-Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetPart.Position)
+local headPart = getTargetHead(closestPlayer.Character)
+if headPart then
+-- เล็งไปที่หัวโดยปรับตำแหน่งความสูงเล็กน้อยเพื่อความแม่นยำสูงสุด
+local targetCFrame = CFrame.new(Camera.CFrame.Position, headPart.Position + Vector3.new(0, 0.2, 0))
+Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, 0.5) -- สมูทกล้องไม่ให้กระชากเกินไป
 end
 end
 end
 end)
--- 2. ฟังก์ชัน ESP ที่แก้ไขให้ติดถาวรและรองรับระบบเปลี่ยนรอบ/รีเซ็ตตัวละครอัตโนมัติ
+-- STREAMING_CHUNK:Implementing Persistent ESP Logic...
 local function applyESP(character)
 if not character then return end
-task.wait(0.5) -- รอโหลดตัวละครเสร็จ
+task.wait(0.3)
 if not character:FindFirstChild("ESP_Highlight") then
 local hl = Instance.new("Highlight")
 hl.Name = "ESP_Highlight"
 hl.FillColor = Color3.fromRGB(255, 0, 0)
 hl.OutlineColor = Color3.fromRGB(255, 255, 255)
 hl.Parent = character
-end
-end
-local function removeESP(character)
-if character then
-local hl = character:FindFirstChild("ESP_Highlight")
-if hl then
-hl:Destroy()
-end
 end
 end
 createToggle("2. มองผู้เล่น (ESP)", 110, function(state)
@@ -169,30 +166,30 @@ if player ~= LocalPlayer then
 if ESPEnabled then
 applyESP(player.Character)
 else
-removeESP(player.Character)
+local hl = player.Character and player.Character:FindFirstChild("ESP_Highlight")
+if hl then hl:Destroy() end
 end
 end
 end
 end)
--- จัดการกับผู้เล่นที่เข้ามาใหม่หรือรีเซ็ตตัวละครใหม่ในทุกเกม
-Players.PlayerAdded:Connect(function(player)
+-- ระบบจัดการรอบเกมและตัวละครเกิดใหม่ (ESP ติดต่อเนื่องอัตโนมัติ)
+local function setupPlayer(player)
 player.CharacterAdded:Connect(function(char)
 if ESPEnabled then
 applyESP(char)
 end
 end)
-end)
+if player.Character and ESPEnabled then
+applyESP(player.Character)
+end
+end
+Players.PlayerAdded:Connect(setupPlayer)
 for _, player in ipairs(Players:GetPlayers()) do
 if player ~= LocalPlayer then
-player.CharacterAdded:Connect(function(char)
-if ESPEnabled then
-applyESP(char)
-end
-end)
+setupPlayer(player)
 end
 end
--- STREAMING_CHUNK:Implementing Speed Hack and Drag Logic...
--- 3. ฟังก์ชันวิ่งเร็วปรับได้ (Speed Hack) ที่ใช้งานได้ดีอยู่แล้ว
+-- STREAMING_CHUNK:Implementing Speed Hack and Drag System...
 createToggle("3. วิ่งเร็ว (Speed)", 160, function(state)
 SpeedEnabled = state
 end)
