@@ -9,11 +9,16 @@ local AimbotEnabled = false
 local ESPEnabled = false
 local SpeedEnabled = false
 local CurrentSpeed = 16
--- สร้างหน้าต่าง GUI (ScreenGui)
+-- ฟังก์ชันหาตำแหน่ง Head หรือ HumanoidRootPart ที่ถูกต้องและแม่นยำที่สุด
+local function getTargetPart(character)
+if not character then return nil end
+-- พยายามหา Head ก่อน ถ้าไม่มีให้ใช้ HumanoidRootPart แทน
+return character:FindFirstChild("Head") or character:FindFirstChild("HumanoidRootPart")
+end
+-- สร้างหน้าต่าง GUI (ScreenGui) แบบรองรับระบบรีเซ็ตตัวละคร (ResetOnSpawn = false)
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "ModMenuGui"
 ScreenGui.ResetOnSpawn = false
--- สำหรับ Roblox แนะนำให้ใส่ใน CoreGui หรือ PlayerGui ตามความเหมาะสม
 if syn and syn.protect_gui then
 syn.protect_gui(ScreenGui)
 ScreenGui.Parent = game:GetService("CoreGui")
@@ -29,9 +34,8 @@ ToggleButton.Position = UDim2.new(0, 20, 0, 20)
 ToggleButton.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 ToggleButton.BorderColor3 = Color3.fromRGB(0, 255, 204)
 ToggleButton.BorderSizePixel = 2
-ToggleButton.Image = "rbxassetid://0" -- แทนที่ด้วย Asset ID ของรูปภาพ หรือ URL ในสภาพแวดล้อมที่รองรับ
+ToggleButton.Image = "rbxassetid://0" -- แทนที่ด้วย Asset ID ของรูปภาพ หรือลิงก์ที่รองรับ
 ToggleButton.Parent = ScreenGui
--- ทำให้ปุ่มรูปภาพเป็นวงกลม
 local UICornerBtn = Instance.new("UICorner")
 UICornerBtn.CornerRadius = UDim.new(1, 0)
 UICornerBtn.Parent = ToggleButton
@@ -53,7 +57,7 @@ UICornerMain.Parent = MainFrame
 local Header = Instance.new("TextLabel")
 Header.Size = UDim2.new(1, 0, 0, 40)
 Header.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-Header.Text = "  Control Panel (Script)"
+Header.Text = "  Control Panel (Fixed)"
 Header.TextColor3 = Color3.fromRGB(0, 255, 204)
 Header.TextSize = 16
 Header.Font = Enum.Font.SourceSansBold
@@ -62,12 +66,10 @@ Header.Parent = MainFrame
 local UICornerHeader = Instance.new("UICorner")
 UICornerHeader.CornerRadius = UDim.new(0, 10)
 UICornerHeader.Parent = Header
--- ปุ่มกดสลับเปิด-ปิดเมนูหลัก
 ToggleButton.MouseButton1Click:Connect(function()
 MainFrame.Visible = not MainFrame.Visible
 end)
 -- STREAMING_CHUNK:Adding Features (Aimbot, ESP, Speed)...
--- ฟังก์ชันช่วยสร้าง Toggle Switch UI ภายในสคริปต์
 local function createToggle(name, yPos, callback)
 local Label = Instance.new("TextLabel")
 Label.Size = UDim2.new(0, 160, 0, 30)
@@ -106,7 +108,7 @@ end
 callback(state)
 end)
 end
--- 1. ฟังก์ชันล็อกหัวผู้เล่นที่ใกล้ที่สุด (Aimbot)
+-- 1. ฟังก์ชันล็อกหัวที่ปรับปรุงให้แม่นยำขึ้นและไม่ค้างเมื่อเปลี่ยนรอบเกม
 createToggle("1. ล็อกหัว (Aimbot)", 60, function(state)
 AimbotEnabled = state
 end)
@@ -115,13 +117,14 @@ if AimbotEnabled then
 local closestPlayer = nil
 local shortestDistance = math.huge
 for _, player in ipairs(Players:GetPlayers()) do
-if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+if player ~= LocalPlayer and player.Character then
 local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-if humanoid and humanoid.Health > 0 then
-local headPos, onScreen = Camera:WorldToScreenPoint(player.Character.Head.Position)
+local targetPart = getTargetPart(player.Character)
+if humanoid and humanoid.Health > 0 and targetPart then
+local screenPos, onScreen = Camera:WorldToScreenPoint(targetPart.Position)
 if onScreen then
 local mousePos = UserInputService:GetMouseLocation()
-local distance = (Vector2.new(headPos.X, headPos.Y) - mousePos).Magnitude
+local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
 if distance < shortestDistance then
 shortestDistance = distance
 closestPlayer = player
@@ -130,47 +133,69 @@ end
 end
 end
 end
-if closestPlayer and closestPlayer.Character and closestPlayer.Character:FindFirstChild("Head") then
-Camera.CFrame = CFrame.new(Camera.CFrame.Position, closestPlayer.Character.Head.Position)
+if closestPlayer then
+local targetPart = getTargetPart(closestPlayer.Character)
+if targetPart then
+-- ปรับมุมมองกล้องให้ตรงตำแหน่งหัวทันทีแบบสมูท
+Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetPart.Position)
+end
 end
 end
 end)
--- 2. ฟังก์ชันมองผู้เล่นทั้งหมด (ESP)
+-- 2. ฟังก์ชัน ESP ที่แก้ไขให้ติดถาวรและรองรับระบบเปลี่ยนรอบ/รีเซ็ตตัวละครอัตโนมัติ
+local function applyESP(character)
+if not character then return end
+task.wait(0.5) -- รอโหลดตัวละครเสร็จ
+if not character:FindFirstChild("ESP_Highlight") then
+local hl = Instance.new("Highlight")
+hl.Name = "ESP_Highlight"
+hl.FillColor = Color3.fromRGB(255, 0, 0)
+hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+hl.Parent = character
+end
+end
+local function removeESP(character)
+if character then
+local hl = character:FindFirstChild("ESP_Highlight")
+if hl then
+hl:Destroy()
+end
+end
+end
 createToggle("2. มองผู้เล่น (ESP)", 110, function(state)
 ESPEnabled = state
 for _, player in ipairs(Players:GetPlayers()) do
-if player ~= LocalPlayer and player.Character then
-local highlight = player.Character:FindFirstChild("ESP_Highlight")
-if ESPEnabled and not highlight then
-local hl = Instance.new("Highlight")
-hl.Name = "ESP_Highlight"
-hl.FillColor = Color3.fromRGB(255, 0, 0)
-hl.OutlineColor = Color3.fromRGB(255, 255, 255)
-hl.Parent = player.Character
-elseif not ESPEnabled and highlight then
-highlight:Destroy()
+if player ~= LocalPlayer then
+if ESPEnabled then
+applyESP(player.Character)
+else
+removeESP(player.Character)
 end
 end
 end
 end)
+-- จัดการกับผู้เล่นที่เข้ามาใหม่หรือรีเซ็ตตัวละครใหม่ในทุกเกม
 Players.PlayerAdded:Connect(function(player)
 player.CharacterAdded:Connect(function(char)
 if ESPEnabled then
-task.wait(1)
-local hl = Instance.new("Highlight")
-hl.Name = "ESP_Highlight"
-hl.FillColor = Color3.fromRGB(255, 0, 0)
-hl.OutlineColor = Color3.fromRGB(255, 255, 255)
-hl.Parent = char
+applyESP(char)
 end
 end)
 end)
+for _, player in ipairs(Players:GetPlayers()) do
+if player ~= LocalPlayer then
+player.CharacterAdded:Connect(function(char)
+if ESPEnabled then
+applyESP(char)
+end
+end)
+end
+end
 -- STREAMING_CHUNK:Implementing Speed Hack and Drag Logic...
--- 3. ฟังก์ชันวิ่งเร็วปรับได้ (Speed Hack)
+-- 3. ฟังก์ชันวิ่งเร็วปรับได้ (Speed Hack) ที่ใช้งานได้ดีอยู่แล้ว
 createToggle("3. วิ่งเร็ว (Speed)", 160, function(state)
 SpeedEnabled = state
 end)
--- แถบแสดงและปรับความเร็ว
 local SpeedLabel = Instance.new("TextLabel")
 SpeedLabel.Size = UDim2.new(0, 250, 0, 20)
 SpeedLabel.Position = UDim2.new(0, 15, 0, 210)
