@@ -13,15 +13,14 @@ local NoClipEnabled = false
 local OneShotEnabled = false
 local FOVEnabled = true
 local FOVRadius = 120 -- ขนาดรัศมีวงกลม FOV เริ่มต้น
--- สร้างวงกลม FOV บนหน้าจอ (Drawing API)
+-- สร้างวงกลม FOV บนหน้าจอด้วย Drawing API
 local FOVCircle = Drawing.new("Circle")
 FOVCircle.Visible = true
 FOVCircle.Thickness = 1.5
 FOVCircle.NumSides = 64
 FOVCircle.Radius = FOVRadius
 FOVCircle.Filled = false
-FOVCircle.Color = Color3.fromRGB(0, 255, 204)
-FOVCircle.Transparency = 0.8
+FOVCircle.Transparency = 0.9
 -- ฟังก์ชันตรวจสอบทีม (Team Check) เพื่อไม่ให้ล็อกเพื่อนร่วมทีม
 local function isEnemy(player)
 if player == LocalPlayer then return false end
@@ -30,7 +29,7 @@ return LocalPlayer.Team ~= player.Team
 end
 return true
 end
--- ฟังก์ชันตรวจสอบการมองเห็น (Raycast WallCheck) เพื่อไม่ให้ล็อกทะลุกำแพง
+-- STREAMING_CHUNK:Initializing WallCheck and Target Finder...
 local function isVisible(targetPart)
 if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("Head") then
 return true
@@ -46,14 +45,13 @@ if result then
 local hitInstance = result.Instance
 local targetCharacter = targetPart.Parent
 if hitInstance:IsDescendantOf(targetCharacter) then
-return true -- มองเห็นได้ปกติ
+return true
 else
-return false -- มีกำแพงกั้น
+return false
 end
 end
 return true
 end
--- ฟังก์ชันค้นหาพาร์ทเป้าหมาย (หัว หรือ ตัว)
 local function getTargetPart(character)
 if not character then return nil end
 if AimTargetPart == "Head" then
@@ -70,7 +68,7 @@ if rootPart then return rootPart end
 end
 return character:FindFirstChild("HumanoidRootPart")
 end
--- สร้างหน้าต่าง GUI (ScreenGui)
+-- STREAMING_CHUNK:Creating GUI and Custom Toggle Button...
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "ModMenuGui"
 ScreenGui.ResetOnSpawn = false
@@ -80,7 +78,6 @@ ScreenGui.Parent = game:GetService("CoreGui")
 else
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 end
--- STREAMING_CHUNK:Creating Floating Toggle Button with Custom Image...
 local ToggleButton = Instance.new("ImageButton")
 ToggleButton.Name = "ToggleButton"
 ToggleButton.Size = UDim2.new(0, 60, 0, 60)
@@ -88,12 +85,11 @@ ToggleButton.Position = UDim2.new(0, 20, 0, 20)
 ToggleButton.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 ToggleButton.BorderColor3 = Color3.fromRGB(0, 255, 204)
 ToggleButton.BorderSizePixel = 2
-ToggleButton.Image = "rbxassetid://0" -- รูปภาพที่คุณต้องการ (หรือใส่ Asset ID / ไฟล์ภาพของคุณ)
+ToggleButton.Image = "rbxassetid://0" -- รูปภาพของคุณ
 ToggleButton.Parent = ScreenGui
 local UICornerBtn = Instance.new("UICorner")
 UICornerBtn.CornerRadius = UDim.new(1, 0)
 UICornerBtn.Parent = ToggleButton
--- STREAMING_CHUNK:Creating Main Script Window...
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 290, 0, 480)
@@ -109,7 +105,7 @@ UICornerMain.Parent = MainFrame
 local Header = Instance.new("TextLabel")
 Header.Size = UDim2.new(1, 0, 0, 40)
 Header.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-Header.Text = "  Control Panel (Fixed V9)"
+Header.Text = "  Control Panel (Rainbow FOV)"
 Header.TextColor3 = Color3.fromRGB(0, 255, 204)
 Header.TextSize = 16
 Header.Font = Enum.Font.SourceSansBold
@@ -121,7 +117,7 @@ UICornerHeader.Parent = Header
 ToggleButton.MouseButton1Click:Connect(function()
 MainFrame.Visible = not MainFrame.Visible
 end)
--- STREAMING_CHUNK:Adding Toggles and Advanced Features Logic...
+-- STREAMING_CHUNK:Adding Toggles and GUI Elements...
 local function createToggle(name, yPos, callback)
 local Label = Instance.new("TextLabel")
 Label.Size = UDim2.new(0, 160, 0, 30)
@@ -160,11 +156,10 @@ end
 callback(state)
 end)
 end
--- 1. ฟังก์ชันเปิด/ปิดระบบล็อก (Aimbot พร้อม TeamCheck และ WallCheck เฉพาะในวง FOV เท่านั้น)
+-- 1. ล็อกเป้าหมาย
 createToggle("1. ล็อกเป้าหมาย", 55, function(state)
 AimbotEnabled = state
 end)
--- ปุ่มเลือกโหมดล็อก (หัว / ตัว)
 local ModeButton = Instance.new("TextButton")
 ModeButton.Size = UDim2.new(0, 260, 0, 25)
 ModeButton.Position = UDim2.new(0, 15, 0, 95)
@@ -186,11 +181,14 @@ AimTargetPart = "Head"
 ModeButton.Text = "โหมดล็อก: เล็งไปที่ [ หัว ]"
 end
 end)
--- อัปเดตตำแหน่งวงกลม FOV และการทำงาน Aimbot (จำกัดเฉพาะในวง FOV เท่านั้น)
+-- STREAMING_CHUNK:Implementing Main Feature Loops (Rainbow FOV & Aimbot)...
 RunService.RenderStepped:Connect(function()
 local mousePos = UserInputService:GetMouseLocation()
 FOVCircle.Position = mousePos
 FOVCircle.Visible = FOVEnabled and AimbotEnabled
+-- ระบบเปลี่ยนสีวงกลม FOV เป็นสีรุ้ง (Rainbow Color Cycle)
+local hue = tick() % 5 / 5
+FOVCircle.Color = Color3.fromHSV(hue, 1, 1)
 if AimbotEnabled then
 local closestPlayer = nil
 local shortestDistance = FOVRadius -- จำกัดการล็อกภายในวง FOV เท่านั้น
@@ -222,7 +220,7 @@ end
 end
 end
 end)
--- STREAMING_CHUNK:Implementing Persistent ESP Logic...
+-- 2. ESP
 local function applyESP(character)
 if not character then return end
 task.wait(0.2)
@@ -247,7 +245,6 @@ end
 end
 end
 end)
--- ระบบจัดการรอบเกมและตัวละครเกิดใหม่ (ESP ติดต่อเนื่องอัตโนมัติทุกรอบเกม ไม่ต้องเปิดปิดใหม่)
 local function setupPlayer(player)
 player.CharacterAdded:Connect(function(char)
 if ESPEnabled and player ~= LocalPlayer then
@@ -264,7 +261,7 @@ if player ~= LocalPlayer then
 setupPlayer(player)
 end
 end
--- STREAMING_CHUNK:Implementing Speed Hack Logic...
+-- 3. Speed
 createToggle("3. วิ่งเร็ว (Speed)", 175, function(state)
 SpeedEnabled = state
 end)
@@ -304,7 +301,7 @@ if SpeedEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChi
 LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = CurrentSpeed
 end
 end)
--- 4. ฟังก์ชันเดินทะลุ (NoClip)
+-- 4. NoClip
 createToggle("4. เดินทะลุกำแพง (NoClip)", 275, function(state)
 NoClipEnabled = state
 end)
@@ -317,7 +314,7 @@ end
 end
 end
 end)
--- 5. ฟังก์ชันยิงทีเดียวหมดแม็ก (One-Shot / Ammo Dump)
+-- 5. One-Shot Ammo Dump
 createToggle("5. ยิงทีเดียวหมดแม็ก (One-Shot)", 320, function(state)
 OneShotEnabled = state
 end)
@@ -333,7 +330,7 @@ end)
 end
 end
 end)
--- 6. ฟังก์ชันปรับขนาดวงกลม FOV (ปรับขนาดได้สูงสุด 360)
+-- 6. FOV Size Adjuster (สูงสุด 360)
 local FOVLabel = Instance.new("TextLabel")
 FOVLabel.Size = UDim2.new(0, 260, 0, 18)
 FOVLabel.Position = UDim2.new(0, 15, 0, 360)
@@ -366,7 +363,7 @@ else
 FOVBox.Text = tostring(FOVRadius)
 end
 end)
--- ระบบลากหน้าต่างเมนู (Draggable Window)
+-- Draggable Window
 local dragging, dragInput, dragStart, startPos
 Header.InputBegan:Connect(function(input)
 if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
