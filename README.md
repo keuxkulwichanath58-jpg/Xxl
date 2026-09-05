@@ -78,7 +78,7 @@ ToggleButton.Position = UDim2.new(0, 20, 0, 20)
 ToggleButton.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 ToggleButton.BorderColor3 = Color3.fromRGB(0, 255, 204)
 ToggleButton.BorderSizePixel = 2
-ToggleButton.Image = "rbxassetid://0" -- เปลี่ยนเป็น Asset ID รูปของคุณเมื่อนำไปรันในเกม
+ToggleButton.Image = "rbxassetid://0" -- แทนที่ด้วย Asset ID รูปภาพของคุณ
 ToggleButton.Parent = ScreenGui
 local UICornerBtn = Instance.new("UICorner")
 UICornerBtn.CornerRadius = UDim.new(1, 0)
@@ -99,7 +99,7 @@ UICornerMain.Parent = MainFrame
 local Header = Instance.new("TextLabel")
 Header.Size = UDim2.new(1, 0, 0, 40)
 Header.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-Header.Text = "  Control Panel (Fixed V5)"
+Header.Text = "  Control Panel (Fixed V6)"
 Header.TextColor3 = Color3.fromRGB(0, 255, 204)
 Header.TextSize = 16
 Header.Font = Enum.Font.SourceSansBold
@@ -282,7 +282,7 @@ local val = tonumber(SpeedBox.Text)
 if val then
 CurrentSpeed = math.clamp(val, 16, 200)
 SpeedBox.Text = tostring(CurrentSpeed)
-SpeedLabel.Text = "ความเร็ว: " .. CurrentSpeed
+SpeedLabel.Text = "ความเร็ว: " + CurrentSpeed
 else
 SpeedBox.Text = tostring(CurrentSpeed)
 end
@@ -292,22 +292,31 @@ if SpeedEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChi
 LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = CurrentSpeed
 end
 end)
--- 4. ฟังก์ชันล่องหน (Invisibility - ทำให้ตัวละครโปร่งใสเพื่อหลบตาฝ่ายตรงข้าม)
+-- 4. ฟังก์ชันล่องหน (Invisibility - ซ่อนโมเดลจากผู้เล่นอื่นโดยไม่กระทบต่อการยิงและการชน)
 createToggle("4. ล่องหน (Invisibility)", 300, function(state)
 InvisibilityEnabled = state
 local char = LocalPlayer.Character
 if char then
-for _, part in ipairs(char:GetDescendants()) do
-if part:IsA("BasePart") or part:IsA("Decal") then
+for _, desc in ipairs(char:GetDescendants()) do
+if desc:IsA("BasePart") or desc:IsA("Decal") then
 if InvisibilityEnabled then
-part.Transparency = 1
+if desc.Name ~= "HumanoidRootPart" then
+desc.LocalTransparencyModifier = 1
+end
 else
-if part.Name == "HumanoidRootPart" then
-part.Transparency = 1
-else
-part.Transparency = 0
+desc.LocalTransparencyModifier = 0
 end
 end
+end
+end
+end)
+-- รองรับการรีเซ็ตสถานะล่องหนเมื่อตัวละครเกิดใหม่
+LocalPlayer.CharacterAdded:Connect(function(newChar)
+task.wait(0.5)
+if InvisibilityEnabled then
+for _, desc in ipairs(newChar:GetDescendants()) do
+if (desc:IsA("BasePart") or desc:IsA("Decal")) and desc.Name ~= "HumanoidRootPart" then
+desc.LocalTransparencyModifier = 1
 end
 end
 end
