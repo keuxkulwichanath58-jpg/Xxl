@@ -1,121 +1,215 @@
--- รอให้โหลดเกมเสร็จสมบูรณ์
-if not game:IsLoaded() then game.Loaded:Wait() end
-local CoreGui = game:GetService("CoreGui")
+-- STREAMING_CHUNK:Initializing Services and Variables...
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
-local player = Players.LocalPlayer
-local guiName = "iPadMenu_Speed_AntiReport"
--- ลบ UI เก่าทิ้งถ้ามีการรันซ้ำ
-local targetParent = pcall(function() return CoreGui end) and CoreGui or player:WaitForChild("PlayerGui")
-if targetParent:FindFirstChild(guiName) then
-targetParent[guiName]:Destroy()
-end
--- สร้าง ScreenGui หลัก
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+-- สถานะฟังก์ชัน (Toggle States)
+local AimbotEnabled = false
+local ESPEnabled = false
+local SpeedEnabled = false
+local CurrentSpeed = 16
+-- สร้างหน้าต่าง GUI (ScreenGui)
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = guiName
+ScreenGui.Name = "ModMenuGui"
 ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = targetParent
--- ==========================================
--- ปุ่ม เปิด/ปิด เมนู (Toggle Button)
--- ==========================================
-local ToggleButton = Instance.new("TextButton")
-ToggleButton.Size = UDim2.new(0, 45, 0, 45)
-ToggleButton.Position = UDim2.new(0, 15, 0, 15) -- มุมซ้ายบน
-ToggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-ToggleButton.BorderSizePixel = 0
-ToggleButton.Text = "⚙️"
-ToggleButton.TextSize = 25
+-- สำหรับ Roblox แนะนำให้ใส่ใน CoreGui หรือ PlayerGui ตามความเหมาะสม
+if syn and syn.protect_gui then
+syn.protect_gui(ScreenGui)
+ScreenGui.Parent = game:GetService("CoreGui")
+else
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+end
+-- STREAMING_CHUNK:Creating Floating Toggle Button with Image...
+-- ปุ่มเปิด/ปิด UI รูปภาพ (image.png)
+local ToggleButton = Instance.new("ImageButton")
+ToggleButton.Name = "ToggleButton"
+ToggleButton.Size = UDim2.new(0, 60, 0, 60)
+ToggleButton.Position = UDim2.new(0, 20, 0, 20)
+ToggleButton.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+ToggleButton.BorderColor3 = Color3.fromRGB(0, 255, 204)
+ToggleButton.BorderSizePixel = 2
+ToggleButton.Image = "rbxassetid://0" -- แทนที่ด้วย Asset ID ของรูปภาพ หรือ URL ในสภาพแวดล้อมที่รองรับ
 ToggleButton.Parent = ScreenGui
-local ToggleCorner = Instance.new("UICorner")
-ToggleCorner.CornerRadius = UDim.new(0.5, 0) -- ทำให้เป็นวงกลม
-ToggleCorner.Parent = ToggleButton
-local ToggleStroke = Instance.new("UIStroke")
-ToggleStroke.Color = Color3.fromRGB(80, 80, 80)
-ToggleStroke.Thickness = 2
-ToggleStroke.Parent = ToggleButton
--- ==========================================
--- หน้าต่างเมนูหลัก (Main Frame)
--- ==========================================
+-- ทำให้ปุ่มรูปภาพเป็นวงกลม
+local UICornerBtn = Instance.new("UICorner")
+UICornerBtn.CornerRadius = UDim.new(1, 0)
+UICornerBtn.Parent = ToggleButton
+-- STREAMING_CHUNK:Creating Main Script Window...
+-- หน้าต่างเมนูหลัก
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 250, 0, 220)
-MainFrame.Position = UDim2.new(0.5, -125, 0.5, -110) -- ตรงกลางจอ
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 280, 0, 320)
+MainFrame.Position = UDim2.new(0.5, -140, 0.5, -160)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-MainFrame.BorderSizePixel = 0
-MainFrame.Active = true
+MainFrame.BackgroundTransparency = 0.1
+MainFrame.BorderColor3 = Color3.fromRGB(51, 51, 51)
+MainFrame.Visible = false
 MainFrame.Parent = ScreenGui
-local MainCorner = Instance.new("UICorner")
-MainCorner.CornerRadius = UDim.new(0, 10)
-MainCorner.Parent = MainFrame
-local MainStroke = Instance.new("UIStroke")
-MainStroke.Color = Color3.fromRGB(60, 60, 60)
-MainStroke.Thickness = 2
-MainStroke.Parent = MainFrame
--- หัวข้อ (Title)
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 40)
-Title.BackgroundTransparency = 1
-Title.Text = "🚀 Speed & Protect"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 20
-Title.Font = Enum.Font.GothamBold
-Title.Parent = MainFrame
--- ช่องกรอกตัวเลขความเร็ว (TextBox)
-local SpeedInput = Instance.new("TextBox")
-SpeedInput.Size = UDim2.new(0.8, 0, 0, 40)
-SpeedInput.Position = UDim2.new(0.1, 0, 0, 50)
-SpeedInput.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-SpeedInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-SpeedInput.PlaceholderText = "Speed (1 - 350)"
-SpeedInput.Text = "50"
-SpeedInput.TextSize = 18
-SpeedInput.Font = Enum.Font.Gotham
-SpeedInput.Parent = MainFrame
-local InputCorner = Instance.new("UICorner")
-InputCorner.CornerRadius = UDim.new(0, 6)
-InputCorner.Parent = SpeedInput
--- ปุ่มเปิด/ปิด ความเร็ว (Speed Button)
-local SpeedButton = Instance.new("TextButton")
-SpeedButton.Size = UDim2.new(0.8, 0, 0, 40)
-SpeedButton.Position = UDim2.new(0.1, 0, 0, 100)
-SpeedButton.BackgroundColor3 = Color3.fromRGB(0, 170, 100)
-SpeedButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-SpeedButton.Text = "Apply Speed"
-SpeedButton.TextSize = 18
-SpeedButton.Font = Enum.Font.GothamBold
-SpeedButton.Parent = MainFrame
-local BtnCorner1 = Instance.new("UICorner")
-BtnCorner1.CornerRadius = UDim.new(0, 6)
-BtnCorner1.Parent = SpeedButton
--- ปุ่มป้องกันรีพอร์ต (Anti-Report Button)
-local AntiReportBtn = Instance.new("TextButton")
-AntiReportBtn.Size = UDim2.new(0.8, 0, 0, 40)
-AntiReportBtn.Position = UDim2.new(0.1, 0, 0, 150)
-AntiReportBtn.BackgroundColor3 = Color3.fromRGB(170, 80, 0)
-AntiReportBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-AntiReportBtn.Text = "🛡️ Anti-Report"
-AntiReportBtn.TextSize = 18
-AntiReportBtn.Font = Enum.Font.GothamBold
-AntiReportBtn.Parent = MainFrame
-local BtnCorner2 = Instance.new("UICorner")
-BtnCorner2.CornerRadius = UDim.new(0, 6)
-BtnCorner2.Parent = AntiReportBtn
--- ==========================================
--- ระบบ เปิด/ปิด หน้าต่าง (Toggle Logic)
--- ==========================================
+local UICornerMain = Instance.new("UICorner")
+UICornerMain.CornerRadius = UDim.new(0, 10)
+UICornerMain.Parent = MainFrame
+-- ส่วนหัวของเมนู (ใช้ลากหน้าต่างได้)
+local Header = Instance.new("TextLabel")
+Header.Size = UDim2.new(1, 0, 0, 40)
+Header.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Header.Text = "  Control Panel (Script)"
+Header.TextColor3 = Color3.fromRGB(0, 255, 204)
+Header.TextSize = 16
+Header.Font = Enum.Font.SourceSansBold
+Header.TextXAlignment = Enum.TextXAlignment.Left
+Header.Parent = MainFrame
+local UICornerHeader = Instance.new("UICorner")
+UICornerHeader.CornerRadius = UDim.new(0, 10)
+UICornerHeader.Parent = Header
+-- ปุ่มกดสลับเปิด-ปิดเมนูหลัก
 ToggleButton.MouseButton1Click:Connect(function()
 MainFrame.Visible = not MainFrame.Visible
 end)
--- ==========================================
--- ระบบลากจูง (Drag UI) รองรับระบบสัมผัส (Touch)
--- ==========================================
-local dragging, dragInput, dragStart, startPos
-local function update(input)
-local delta = input.Position - dragStart
-MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+-- STREAMING_CHUNK:Adding Features (Aimbot, ESP, Speed)...
+-- ฟังก์ชันช่วยสร้าง Toggle Switch UI ภายในสคริปต์
+local function createToggle(name, yPos, callback)
+local Label = Instance.new("TextLabel")
+Label.Size = UDim2.new(0, 160, 0, 30)
+Label.Position = UDim2.new(0, 15, 0, yPos)
+Label.BackgroundTransparency = 1
+Label.Text = name
+Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+Label.TextSize = 14
+Label.Font = Enum.Font.SourceSansSemibold
+Label.TextXAlignment = Enum.TextXAlignment.Left
+Label.Parent = MainFrame
+local Button = Instance.new("TextButton")
+Button.Size = UDim2.new(0, 50, 0, 24)
+Button.Position = UDim2.new(1, -65, 0, yPos + 3)
+Button.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+Button.Text = "OFF"
+Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+Button.TextSize = 12
+Button.Font = Enum.Font.SourceSansBold
+Button.Parent = MainFrame
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 4)
+UICorner.Parent = Button
+local state = false
+Button.MouseButton1Click:Connect(function()
+state = not state
+if state then
+Button.BackgroundColor3 = Color3.fromRGB(0, 255, 204)
+Button.TextColor3 = Color3.fromRGB(0, 0, 0)
+Button.Text = "ON"
+else
+Button.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+Button.Text = "OFF"
 end
-MainFrame.InputBegan:Connect(function(input)
+callback(state)
+end)
+end
+-- 1. ฟังก์ชันล็อกหัวผู้เล่นที่ใกล้ที่สุด (Aimbot)
+createToggle("1. ล็อกหัว (Aimbot)", 60, function(state)
+AimbotEnabled = state
+end)
+RunService.RenderStepped:Connect(function()
+if AimbotEnabled then
+local closestPlayer = nil
+local shortestDistance = math.huge
+for _, player in ipairs(Players:GetPlayers()) do
+if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+if humanoid and humanoid.Health > 0 then
+local headPos, onScreen = Camera:WorldToScreenPoint(player.Character.Head.Position)
+if onScreen then
+local mousePos = UserInputService:GetMouseLocation()
+local distance = (Vector2.new(headPos.X, headPos.Y) - mousePos).Magnitude
+if distance < shortestDistance then
+shortestDistance = distance
+closestPlayer = player
+end
+end
+end
+end
+end
+if closestPlayer and closestPlayer.Character and closestPlayer.Character:FindFirstChild("Head") then
+Camera.CFrame = CFrame.new(Camera.CFrame.Position, closestPlayer.Character.Head.Position)
+end
+end
+end)
+-- 2. ฟังก์ชันมองผู้เล่นทั้งหมด (ESP)
+createToggle("2. มองผู้เล่น (ESP)", 110, function(state)
+ESPEnabled = state
+for _, player in ipairs(Players:GetPlayers()) do
+if player ~= LocalPlayer and player.Character then
+local highlight = player.Character:FindFirstChild("ESP_Highlight")
+if ESPEnabled and not highlight then
+local hl = Instance.new("Highlight")
+hl.Name = "ESP_Highlight"
+hl.FillColor = Color3.fromRGB(255, 0, 0)
+hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+hl.Parent = player.Character
+elseif not ESPEnabled and highlight then
+highlight:Destroy()
+end
+end
+end
+end)
+Players.PlayerAdded:Connect(function(player)
+player.CharacterAdded:Connect(function(char)
+if ESPEnabled then
+task.wait(1)
+local hl = Instance.new("Highlight")
+hl.Name = "ESP_Highlight"
+hl.FillColor = Color3.fromRGB(255, 0, 0)
+hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+hl.Parent = char
+end
+end)
+end)
+-- STREAMING_CHUNK:Implementing Speed Hack and Drag Logic...
+-- 3. ฟังก์ชันวิ่งเร็วปรับได้ (Speed Hack)
+createToggle("3. วิ่งเร็ว (Speed)", 160, function(state)
+SpeedEnabled = state
+end)
+-- แถบแสดงและปรับความเร็ว
+local SpeedLabel = Instance.new("TextLabel")
+SpeedLabel.Size = UDim2.new(0, 250, 0, 20)
+SpeedLabel.Position = UDim2.new(0, 15, 0, 210)
+SpeedLabel.BackgroundTransparency = 1
+SpeedLabel.Text = "ความเร็ว: 16"
+SpeedLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+SpeedLabel.TextSize, SpeedLabel.Font = 13, Enum.Font.SourceSans
+SpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
+SpeedLabel.Parent = MainFrame
+local SpeedBox = Instance.new("TextBox")
+SpeedBox.Size = UDim2.new(0, 250, 0, 30)
+SpeedBox.Position = UDim2.new(0, 15, 0, 235)
+SpeedBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+SpeedBox.Text = "16"
+SpeedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpeedBox.TextSize = 14
+SpeedBox.Font = Enum.Font.SourceSans
+SpeedBox.Parent = MainFrame
+local UICornerBox = Instance.new("UICorner")
+UICornerBox.CornerRadius = UDim.new(0, 4)
+UICornerBox.Parent = SpeedBox
+SpeedBox.FocusLost:Connect(function(enterPressed)
+local val = tonumber(SpeedBox.Text)
+if val then
+CurrentSpeed = math.clamp(val, 16, 200)
+SpeedBox.Text = tostring(CurrentSpeed)
+SpeedLabel.Text = "ความเร็ว: " .. CurrentSpeed
+else
+SpeedBox.Text = tostring(CurrentSpeed)
+end
+end)
+RunService.Heartbeat:Connect(function()
+if SpeedEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = CurrentSpeed
+end
+end)
+-- ระบบลากหน้าต่างเมนู (Draggable Window)
+local dragging, dragInput, dragStart, startPos
+Header.InputBegan:Connect(function(input)
 if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 dragging = true
 dragStart = input.Position
@@ -127,93 +221,14 @@ end
 end)
 end
 end)
-MainFrame.InputChanged:Connect(function(input)
+Header.InputChanged:Connect(function(input)
 if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
 dragInput = input
 end
 end)
 UserInputService.InputChanged:Connect(function(input)
 if input == dragInput and dragging then
-update(input)
+local delta = input.Position - dragStart
+MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
 end
 end)
--- ==========================================
--- ระบบ Speed (Bypass เกมที่ชอบรีเซ็ตความเร็ว)
--- ==========================================
-local speedEnabled = false
-local speedConnection = nil
-SpeedButton.MouseButton1Click:Connect(function()
-speedEnabled = not speedEnabled
-if speedEnabled then
-local targetSpeed = tonumber(SpeedInput.Text)
-if targetSpeed and targetSpeed >= 1 and targetSpeed <= 350 then
-SpeedButton.Text = "Stop Speed"
-SpeedButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50) -- เปลี่ยนเป็นสีแดง
--- ล็อกความเร็วทุกๆ เฟรม
-speedConnection = RunService.RenderStepped:Connect(function()
-local char = player.Character
-if char and char:FindFirstChild("Humanoid") then
-char.Humanoid.WalkSpeed = targetSpeed
-end
-end)
-else
--- ถ้ากรอกเลขผิด
-speedEnabled = false
-SpeedInput.Text = "50"
-StarterGui:SetCore("SendNotification", {
-Title = "Error",
-Text = "กรุณาใส่ตัวเลข 1 - 350",
-Duration = 3
-})
-end
-else
-SpeedButton.Text = "Apply Speed"
-SpeedButton.BackgroundColor3 = Color3.fromRGB(0, 170, 100) -- เปลี่ยนกลับเป็นสีเขียว
--- ปิดการล็อกความเร็วและคืนค่าปกติ (16 คือความเร็วพื้นฐาน Roblox)
-if speedConnection then
-speedConnection:Disconnect()
-speedConnection = nil
-end
-local char = player.Character
-if char and char:FindFirstChild("Humanoid") then
-char.Humanoid.WalkSpeed = 16
-end
-end
-end)
--- ==========================================
--- ระบบ Anti-Report พร้อม Cooldown กันข้อความเด้งซ้อน
--- ==========================================
-local isCooldown = false
-AntiReportBtn.MouseButton1Click:Connect(function()
-if isCooldown then return end -- ถ้าติดคูลดาวน์อยู่ กดไม่ติด
-isCooldown = true
--- ทำการแจ้งเตือน
-StarterGui:SetCore("SendNotification", {
-Title = "Protection",
-Text = "Anti-Report functions activated locally.",
-Duration = 3 -- โชว์ 3 วินาที
-})
--- โค้ดป้องกันการรีพอร์ตเบื้องต้น (Clear Name/ID locally)
--- เป็นการจำลองการซ่อนฝั่งผู้เล่น
-pcall(function()
-if player.Character then
--- ลบชื่อตัวเองที่ลอยอยู่บนหัว (ถ้าเกมนั้นมี)
-for _, v in pairs(player.Character:GetDescendants()) do
-if v:IsA("BillboardGui") or v:IsA("SurfaceGui") or v:IsA("TextLabel") then
-if string.match(string.lower(v.Text), string.lower(player.Name)) or
-string.match(v.Text, player.DisplayName) then
-v:Destroy()
-end
-end
-end
-end
-end)
-AntiReportBtn.Text = "⏳ Wait..."
-AntiReportBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
--- หน่วงเวลา 3.5 วินาที ก่อนจะกดได้ใหม่
-task.wait(3.5)
-isCooldown = false
-AntiReportBtn.Text = "🛡️ Anti-Report"
-AntiReportBtn.BackgroundColor3 = Color3.fromRGB(170, 80, 0)
-end)
-print("Loaded Script Successfully!")
