@@ -10,7 +10,8 @@ local ESPEnabled = false
 local SpeedEnabled = false
 local CurrentSpeed = 16
 local InvisibilityEnabled = false
-local ShootThroughEnabled = false -- ยิงทะลุ/ยิงระยะไกล
+local NoClipEnabled = false
+local FastAttackEnabled = false
 -- ฟังก์ชันตรวจสอบทีม (Team Check) เพื่อไม่ให้ล็อกเพื่อนร่วมทีม
 local function isEnemy(player)
 if player == LocalPlayer then return false end
@@ -77,7 +78,7 @@ ToggleButton.Position = UDim2.new(0, 20, 0, 20)
 ToggleButton.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 ToggleButton.BorderColor3 = Color3.fromRGB(0, 255, 204)
 ToggleButton.BorderSizePixel = 2
-ToggleButton.Image = "rbxassetid://0" -- แทนที่หรือใส่ Asset ID รูปภาพของคุณตรงนี้
+ToggleButton.Image = "rbxassetid://0" -- รูปภาพที่คุณต้องการ (เปลี่ยนเป็น Asset ID ของคุณได้)
 ToggleButton.Parent = ScreenGui
 local UICornerBtn = Instance.new("UICorner")
 UICornerBtn.CornerRadius = UDim.new(1, 0)
@@ -85,8 +86,8 @@ UICornerBtn.Parent = ToggleButton
 -- STREAMING_CHUNK:Creating Main Script Window...
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 290, 0, 460)
-MainFrame.Position = UDim2.new(0.5, -145, 0.5, -230)
+MainFrame.Size = UDim2.new(0, 290, 0, 480)
+MainFrame.Position = UDim2.new(0.5, -145, 0.5, -240)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 MainFrame.BackgroundTransparency = 0.1
 MainFrame.BorderColor3 = Color3.fromRGB(51, 51, 51)
@@ -98,7 +99,7 @@ UICornerMain.Parent = MainFrame
 local Header = Instance.new("TextLabel")
 Header.Size = UDim2.new(1, 0, 0, 40)
 Header.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-Header.Text = "  Control Panel (Fixed V7)"
+Header.Text = "  Control Panel (Fixed V8)"
 Header.TextColor3 = Color3.fromRGB(0, 255, 204)
 Header.TextSize = 16
 Header.Font = Enum.Font.SourceSansBold
@@ -221,7 +222,7 @@ hl.OutlineColor = Color3.fromRGB(255, 255, 255)
 hl.Parent = character
 end
 end
-createToggle("2. มองผู้เล่น (ESP)", 135, function(state)
+createToggle("2. มองผู้เล่น (ESP)", 130, function(state)
 ESPEnabled = state
 for _, player in ipairs(Players:GetPlayers()) do
 if player ~= LocalPlayer then
@@ -251,26 +252,26 @@ if player ~= LocalPlayer then
 setupPlayer(player)
 end
 end
--- STREAMING_CHUNK:Implementing Speed Hack and Invisibility Logic...
-createToggle("3. วิ่งเร็ว (Speed)", 185, function(state)
+-- STREAMING_CHUNK:Implementing Speed Hack Logic...
+createToggle("3. วิ่งเร็ว (Speed)", 175, function(state)
 SpeedEnabled = state
 end)
 local SpeedLabel = Instance.new("TextLabel")
-SpeedLabel.Size = UDim2.new(0, 260, 0, 20)
-SpeedLabel.Position = UDim2.new(0, 15, 0, 230)
+SpeedLabel.Size = UDim2.new(0, 260, 0, 18)
+SpeedLabel.Position = UDim2.new(0, 15, 0, 215)
 SpeedLabel.BackgroundTransparency = 1
 SpeedLabel.Text = "ความเร็ว: 16"
 SpeedLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-SpeedLabel.TextSize, SpeedLabel.Font = 13, Enum.Font.SourceSans
+SpeedLabel.TextSize, SpeedLabel.Font = 12, Enum.Font.SourceSans
 SpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
 SpeedLabel.Parent = MainFrame
 local SpeedBox = Instance.new("TextBox")
-SpeedBox.Size = UDim2.new(0, 260, 0, 30)
-SpeedBox.Position = UDim2.new(0, 15, 0, 255)
+SpeedBox.Size = UDim2.new(0, 260, 0, 26)
+SpeedBox.Position = UDim2.new(0, 15, 0, 235)
 SpeedBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 SpeedBox.Text = "16"
 SpeedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-SpeedBox.TextSize = 14
+SpeedBox.TextSize = 13
 SpeedBox.Font = Enum.Font.SourceSans
 SpeedBox.Parent = MainFrame
 local UICornerBox = Instance.new("UICorner")
@@ -292,7 +293,7 @@ LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = CurrentSpeed
 end
 end)
 -- 4. ฟังก์ชันล่องหน (True Invisibility: แยก Hitbox เพื่อให้ศัตรูยิงไม่โดนตัวเรา)
-createToggle("4. ล่องหน (Invisibility)", 300, function(state)
+createToggle("4. ล่องหน (Invisibility)", 275, function(state)
 InvisibilityEnabled = state
 local char = LocalPlayer.Character
 if char and char:FindFirstChild("HumanoidRootPart") then
@@ -309,29 +310,41 @@ end
 end
 end
 if InvisibilityEnabled then
--- ซ่อนตัวตนจริงโดยย้าย RootPart ไปไว้ใต้ดินลึกๆ เพื่อให้ระบบยิงของศัตรูหาตัวไม่เจอ
-rootPart.CFrame = rootPart.CFrame + Vector3.new(0, -500, 0)
+-- แยกหรือโยกย้ายตำแหน่ง RootPart หลอกระบบการยิงของศัตรู
+rootPart.CFrame = rootPart.CFrame + Vector3.new(0, -300, 0)
 else
-rootPart.CFrame = rootPart.CFrame + Vector3.new(0, 500, 0)
+rootPart.CFrame = rootPart.CFrame + Vector3.new(0, 300, 0)
 end
 end
 end)
--- 5. ฟังก์ชันยิงทะลุ / โจมตีระยะไกล (Shoot Through / Hitbox Extender)
-createToggle("5. ยิงทะลุ (Shoot Through)", 345, function(state)
-ShootThroughEnabled = state
+-- 5. ฟังก์ชันเดินทะลุ (NoClip)
+createToggle("5. เดินทะลุกำแพง (NoClip)", 320, function(state)
+NoClipEnabled = state
+end)
+RunService.Stepped:Connect(function()
+if NoClipEnabled and LocalPlayer.Character then
+for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
+if part:IsA("BasePart") then
+part.CanCollide = false
+end
+end
+end
+end)
+-- 6. ฟังก์ชันยิงเร็ว/โจมตีเร็ว (Fast Attack / Rapid Fire)
+createToggle("6. ยิงเร็ว (Fast Attack)", 365, function(state)
+FastAttackEnabled = state
 end)
 RunService.Heartbeat:Connect(function()
-if ShootThroughEnabled then
-for _, player in ipairs(Players:GetPlayers()) do
-if isEnemy(player) and player.Character then
-local rootPart = player.Character:FindFirstChild("HumanoidRootPart")
-if rootPart then
--- ขยายขนาด Hitbox ศัตรูเพื่อให้กระสุนหรือการโจมตีโดนง่ายขึ้นจากทุกมุม
-rootPart.Size = Vector3.new(15, 15, 15)
-rootPart.Transparency = 0.8
-rootPart.CanCollide = false
+if FastAttackEnabled and LocalPlayer.Character then
+local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
+if tool then
+-- พยายามเร่งอัตราการทำงานหรือลดดีเลย์ของอาวุธ/เครื่องมือ
+pcall(function()
+if tool:FindFirstChild("Handle") then
+-- เร่งการกระตุ้นใช้งานฟีเจอร์ยิงซ้ำ (Rapid Fire simulation)
+tool:Activate()
 end
-end
+end)
 end
 end
 end)
