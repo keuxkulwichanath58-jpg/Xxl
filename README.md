@@ -5,14 +5,25 @@ local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local AimbotEnabled = false
-local AimTargetPart = "Head" -- ค่าเริ่มต้นคือล็อกหัว ("Head" หรือ "HumanoidRootPart")
+local AimTargetPart = "Head" -- "Head" หรือ "HumanoidRootPart"
 local ESPEnabled = false
 local SpeedEnabled = false
 local CurrentSpeed = 16
+local InvisibilityEnabled = false
+-- ฟังก์ชันตรวจสอบทีม (Team Check) เพื่อไม่ให้ล็อกเพื่อนร่วมทีม
+local function isEnemy(player)
+if player == LocalPlayer then return false end
+-- ตรวจสอบ Team ของ Roblox (ถ้าเกมมีระบบ Team)
+if LocalPlayer.Team and player.Team then
+return LocalPlayer.Team ~= player.Team
+end
+-- กรณีเกมไม่มีระบบ Team ให้ถือว่าเป็นศัตรูทั้งหมด ยกเว้นตัวเอง
+return true
+end
 -- ฟังก์ชันตรวจสอบการมองเห็น (Raycast WallCheck) เพื่อไม่ให้ล็อกทะลุกำแพง
 local function isVisible(targetPart)
 if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("Head") then
-return true -- ถ้าหาตัวผู้เล่นไม่เจอ ให้ผ่านไปก่อน
+return true
 end
 local origin = LocalPlayer.Character.Head.Position
 local direction = targetPart.Position - origin
@@ -22,18 +33,17 @@ raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
 raycastParams.IgnoreWater = true
 local result = workspace:Raycast(origin, direction, raycastParams)
 if result then
--- ถ้าชนอะไรบางอย่างก่อนถึงเป้าหมาย และสิ่งนั้นไม่ได้เป็นส่วนหนึ่งของตัวละครเป้าหมาย แสดงว่ามีกำแพงกั้น
 local hitInstance = result.Instance
 local targetCharacter = targetPart.Parent
 if hitInstance:IsDescendantOf(targetCharacter) then
-return true -- มองเห็นได้ปกติ (ไม่มีกำแพงขวางระหว่างทาง)
+return true -- มองเห็นได้ปกติ
 else
 return false -- มีกำแพงกั้น
 end
 end
 return true
 end
--- ฟังก์ชันค้นหาพาร์ทเป้าหมายที่แม่นยำ (หัว หรือ ตัว)
+-- ฟังก์ชันค้นหาพาร์ทเป้าหมาย (หัว หรือ ตัว)
 local function getTargetPart(character)
 if not character then return nil end
 if AimTargetPart == "Head" then
@@ -45,7 +55,6 @@ return child
 end
 end
 else
--- ล็อกตัว (HumanoidRootPart หรือ Torso)
 local rootPart = character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Torso")
 if rootPart then return rootPart end
 end
@@ -69,8 +78,7 @@ ToggleButton.Position = UDim2.new(0, 20, 0, 20)
 ToggleButton.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 ToggleButton.BorderColor3 = Color3.fromRGB(0, 255, 204)
 ToggleButton.BorderSizePixel = 2
--- ใช้รูปภาพตามที่คุณกำหนด (หากรันในเกมที่รองรับ asset id สามารถเปลี่ยนเป็น rbxassetid://... ได้)
-ToggleButton.Image = "rbxassetid://0"
+ToggleButton.Image = "rbxassetid://0" -- เปลี่ยนเป็น Asset ID รูปของคุณเมื่อนำไปรันในเกม
 ToggleButton.Parent = ScreenGui
 local UICornerBtn = Instance.new("UICorner")
 UICornerBtn.CornerRadius = UDim.new(1, 0)
@@ -78,8 +86,8 @@ UICornerBtn.Parent = ToggleButton
 -- STREAMING_CHUNK:Creating Main Script Window...
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 290, 0, 360)
-MainFrame.Position = UDim2.new(0.5, -145, 0.5, -180)
+MainFrame.Size = UDim2.new(0, 290, 0, 420)
+MainFrame.Position = UDim2.new(0.5, -145, 0.5, -210)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 MainFrame.BackgroundTransparency = 0.1
 MainFrame.BorderColor3 = Color3.fromRGB(51, 51, 51)
@@ -91,7 +99,7 @@ UICornerMain.Parent = MainFrame
 local Header = Instance.new("TextLabel")
 Header.Size = UDim2.new(1, 0, 0, 40)
 Header.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-Header.Text = "  Control Panel (Fixed V4)"
+Header.Text = "  Control Panel (Fixed V5)"
 Header.TextColor3 = Color3.fromRGB(0, 255, 204)
 Header.TextSize = 16
 Header.Font = Enum.Font.SourceSansBold
@@ -142,7 +150,7 @@ end
 callback(state)
 end)
 end
--- 1. ฟังก์ชันเปิด/ปิดระบบล็อก (Aimbot)
+-- 1. ฟังก์ชันเปิด/ปิดระบบล็อก (Aimbot พร้อม TeamCheck และ WallCheck)
 createToggle("1. ล็อกเป้าหมาย", 55, function(state)
 AimbotEnabled = state
 end)
@@ -168,18 +176,17 @@ AimTargetPart = "Head"
 ModeButton.Text = "โหมดล็อก: เล็งไปที่ [ หัว ]"
 end
 end)
--- ลูปการทำงาน Aimbot พร้อมระบบเช็คกำแพง (WallCheck)
+-- ลูปการทำงาน Aimbot (ไม่ล็อกเพื่อนร่วมทีม และไม่ล็อกผ่านกำแพง)
 RunService.RenderStepped:Connect(function()
 if AimbotEnabled then
 local closestPlayer = nil
 local shortestDistance = math.huge
 local mousePos = UserInputService:GetMouseLocation()
 for _, player in ipairs(Players:GetPlayers()) do
-if player ~= LocalPlayer and player.Character then
+if isEnemy(player) and player.Character then
 local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
 local targetPart = getTargetPart(player.Character)
 if humanoid and humanoid.Health > 0 and targetPart then
--- เช็คว่ามองเห็นจริงหรือไม่ (ป้องกันการล็อกทะลุกำแพง)
 if isVisible(targetPart) then
 local screenPos, onScreen = Camera:WorldToScreenPoint(targetPart.Position)
 if onScreen then
@@ -198,7 +205,7 @@ local targetPart = getTargetPart(closestPlayer.Character)
 if targetPart then
 local offset = (AimTargetPart == "Head") and Vector3.new(0, 0.1, 0) or Vector3.new(0, 0, 0)
 local targetCFrame = CFrame.new(Camera.CFrame.Position, targetPart.Position + offset)
-Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, 0.4) -- สมูทกล้องแบบนุ่มนวล
+Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, 0.4)
 end
 end
 end
@@ -228,14 +235,14 @@ end
 end
 end
 end)
--- ระบบจัดการรอบเกมและตัวละครเกิดใหม่ (ESP ติดต่อเนื่องอัตโนมัติทุกเกม)
+-- ระบบจัดการรอบเกมและตัวละครเกิดใหม่ (ESP ติดต่อเนื่องอัตโนมัติทุกรอบเกม)
 local function setupPlayer(player)
 player.CharacterAdded:Connect(function(char)
-if ESPEnabled then
+if ESPEnabled and player ~= LocalPlayer then
 applyESP(char)
 end
 end)
-if player.Character and ESPEnabled then
+if player.Character and ESPEnabled and player ~= LocalPlayer then
 applyESP(player.Character)
 end
 end
@@ -245,7 +252,7 @@ if player ~= LocalPlayer then
 setupPlayer(player)
 end
 end
--- STREAMING_CHUNK:Implementing Speed Hack and Drag System...
+-- STREAMING_CHUNK:Implementing Speed Hack and Invisibility Logic...
 createToggle("3. วิ่งเร็ว (Speed)", 185, function(state)
 SpeedEnabled = state
 end)
@@ -283,6 +290,26 @@ end)
 RunService.Heartbeat:Connect(function()
 if SpeedEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
 LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = CurrentSpeed
+end
+end)
+-- 4. ฟังก์ชันล่องหน (Invisibility - ทำให้ตัวละครโปร่งใสเพื่อหลบตาฝ่ายตรงข้าม)
+createToggle("4. ล่องหน (Invisibility)", 300, function(state)
+InvisibilityEnabled = state
+local char = LocalPlayer.Character
+if char then
+for _, part in ipairs(char:GetDescendants()) do
+if part:IsA("BasePart") or part:IsA("Decal") then
+if InvisibilityEnabled then
+part.Transparency = 1
+else
+if part.Name == "HumanoidRootPart" then
+part.Transparency = 1
+else
+part.Transparency = 0
+end
+end
+end
+end
 end
 end)
 -- ระบบลากหน้าต่างเมนู (Draggable Window)
