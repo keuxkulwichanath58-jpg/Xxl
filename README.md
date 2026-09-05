@@ -10,14 +10,13 @@ local ESPEnabled = false
 local SpeedEnabled = false
 local CurrentSpeed = 16
 local InvisibilityEnabled = false
+local ShootThroughEnabled = false -- ยิงทะลุ/ยิงระยะไกล
 -- ฟังก์ชันตรวจสอบทีม (Team Check) เพื่อไม่ให้ล็อกเพื่อนร่วมทีม
 local function isEnemy(player)
 if player == LocalPlayer then return false end
--- ตรวจสอบ Team ของ Roblox (ถ้าเกมมีระบบ Team)
 if LocalPlayer.Team and player.Team then
 return LocalPlayer.Team ~= player.Team
 end
--- กรณีเกมไม่มีระบบ Team ให้ถือว่าเป็นศัตรูทั้งหมด ยกเว้นตัวเอง
 return true
 end
 -- ฟังก์ชันตรวจสอบการมองเห็น (Raycast WallCheck) เพื่อไม่ให้ล็อกทะลุกำแพง
@@ -78,7 +77,7 @@ ToggleButton.Position = UDim2.new(0, 20, 0, 20)
 ToggleButton.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 ToggleButton.BorderColor3 = Color3.fromRGB(0, 255, 204)
 ToggleButton.BorderSizePixel = 2
-ToggleButton.Image = "rbxassetid://0" -- แทนที่ด้วย Asset ID รูปภาพของคุณ
+ToggleButton.Image = "rbxassetid://0" -- แทนที่หรือใส่ Asset ID รูปภาพของคุณตรงนี้
 ToggleButton.Parent = ScreenGui
 local UICornerBtn = Instance.new("UICorner")
 UICornerBtn.CornerRadius = UDim.new(1, 0)
@@ -86,8 +85,8 @@ UICornerBtn.Parent = ToggleButton
 -- STREAMING_CHUNK:Creating Main Script Window...
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 290, 0, 420)
-MainFrame.Position = UDim2.new(0.5, -145, 0.5, -210)
+MainFrame.Size = UDim2.new(0, 290, 0, 460)
+MainFrame.Position = UDim2.new(0.5, -145, 0.5, -230)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 MainFrame.BackgroundTransparency = 0.1
 MainFrame.BorderColor3 = Color3.fromRGB(51, 51, 51)
@@ -99,7 +98,7 @@ UICornerMain.Parent = MainFrame
 local Header = Instance.new("TextLabel")
 Header.Size = UDim2.new(1, 0, 0, 40)
 Header.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-Header.Text = "  Control Panel (Fixed V6)"
+Header.Text = "  Control Panel (Fixed V7)"
 Header.TextColor3 = Color3.fromRGB(0, 255, 204)
 Header.TextSize = 16
 Header.Font = Enum.Font.SourceSansBold
@@ -111,7 +110,7 @@ UICornerHeader.Parent = Header
 ToggleButton.MouseButton1Click:Connect(function()
 MainFrame.Visible = not MainFrame.Visible
 end)
--- STREAMING_CHUNK:Adding Toggles and Advanced Aimbot Logic...
+-- STREAMING_CHUNK:Adding Toggles and Advanced Features Logic...
 local function createToggle(name, yPos, callback)
 local Label = Instance.new("TextLabel")
 Label.Size = UDim2.new(0, 160, 0, 30)
@@ -282,7 +281,7 @@ local val = tonumber(SpeedBox.Text)
 if val then
 CurrentSpeed = math.clamp(val, 16, 200)
 SpeedBox.Text = tostring(CurrentSpeed)
-SpeedLabel.Text = "ความเร็ว: " + CurrentSpeed
+SpeedLabel.Text = "ความเร็ว: " .. CurrentSpeed
 else
 SpeedBox.Text = tostring(CurrentSpeed)
 end
@@ -292,15 +291,16 @@ if SpeedEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChi
 LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = CurrentSpeed
 end
 end)
--- 4. ฟังก์ชันล่องหน (Invisibility - ซ่อนโมเดลจากผู้เล่นอื่นโดยไม่กระทบต่อการยิงและการชน)
+-- 4. ฟังก์ชันล่องหน (True Invisibility: แยก Hitbox เพื่อให้ศัตรูยิงไม่โดนตัวเรา)
 createToggle("4. ล่องหน (Invisibility)", 300, function(state)
 InvisibilityEnabled = state
 local char = LocalPlayer.Character
-if char then
+if char and char:FindFirstChild("HumanoidRootPart") then
+local rootPart = char.HumanoidRootPart
 for _, desc in ipairs(char:GetDescendants()) do
 if desc:IsA("BasePart") or desc:IsA("Decal") then
 if InvisibilityEnabled then
-if desc.Name ~= "HumanoidRootPart" then
+if desc ~= rootPart then
 desc.LocalTransparencyModifier = 1
 end
 else
@@ -308,15 +308,29 @@ desc.LocalTransparencyModifier = 0
 end
 end
 end
+if InvisibilityEnabled then
+-- ซ่อนตัวตนจริงโดยย้าย RootPart ไปไว้ใต้ดินลึกๆ เพื่อให้ระบบยิงของศัตรูหาตัวไม่เจอ
+rootPart.CFrame = rootPart.CFrame + Vector3.new(0, -500, 0)
+else
+rootPart.CFrame = rootPart.CFrame + Vector3.new(0, 500, 0)
+end
 end
 end)
--- รองรับการรีเซ็ตสถานะล่องหนเมื่อตัวละครเกิดใหม่
-LocalPlayer.CharacterAdded:Connect(function(newChar)
-task.wait(0.5)
-if InvisibilityEnabled then
-for _, desc in ipairs(newChar:GetDescendants()) do
-if (desc:IsA("BasePart") or desc:IsA("Decal")) and desc.Name ~= "HumanoidRootPart" then
-desc.LocalTransparencyModifier = 1
+-- 5. ฟังก์ชันยิงทะลุ / โจมตีระยะไกล (Shoot Through / Hitbox Extender)
+createToggle("5. ยิงทะลุ (Shoot Through)", 345, function(state)
+ShootThroughEnabled = state
+end)
+RunService.Heartbeat:Connect(function()
+if ShootThroughEnabled then
+for _, player in ipairs(Players:GetPlayers()) do
+if isEnemy(player) and player.Character then
+local rootPart = player.Character:FindFirstChild("HumanoidRootPart")
+if rootPart then
+-- ขยายขนาด Hitbox ศัตรูเพื่อให้กระสุนหรือการโจมตีโดนง่ายขึ้นจากทุกมุม
+rootPart.Size = Vector3.new(15, 15, 15)
+rootPart.Transparency = 0.8
+rootPart.CanCollide = false
+end
 end
 end
 end
