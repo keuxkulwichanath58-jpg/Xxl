@@ -1,291 +1,183 @@
--- STREAMING_CHUNK:Initializing Services and UI...
+--// Roblox Script UI (Auto Speed 30 & Safe Shooting)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+
 local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
-local MagicAimEnabled = false
-local ESPEnabled = false
-local SpeedEnabled = false
-local CurrentSpeed = 16
-local NoClipEnabled = false
-local InfJumpEnabled = false
-local function isEnemy(player)
-if player == LocalPlayer then return false end
-if LocalPlayer.Team and player.Team then
-return LocalPlayer.Team ~= player.Team
+local Camera = Workspace.CurrentCamera
+
+--// ลบ UI เก่าทิ้งถ้ามีอยู่แล้ว
+if game.CoreGui:FindFirstChild("CustomScriptUI") then
+    game.CoreGui.CustomScriptUI:Destroy()
 end
-return true
-end
--- STREAMING_CHUNK:Creating GUI and Custom Toggle Button...
+
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ModMenuGui"
+ScreenGui.Name = "CustomScriptUI"
+ScreenGui.Parent = game.CoreGui
 ScreenGui.ResetOnSpawn = false
-pcall(function()
-if syn and syn.protect_gui then
-syn.protect_gui(ScreenGui)
-ScreenGui.Parent = game:GetService("CoreGui")
-else
-ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-end
-end)
-if not ScreenGui.Parent then
-ScreenGui.Parent = game:GetService("CoreGui")
-end
+
+--// 1. ปุ่มเปิด/ปิดเมนูหลัก (ใช้รูปภาพ image.png)
 local ToggleButton = Instance.new("ImageButton")
-ToggleButton.Name = "ToggleButton"
-ToggleButton.Size = UDim2.new(0, 60, 0, 60)
-ToggleButton.Position = UDim2.new(0, 20, 0, 20)
-ToggleButton.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-ToggleButton.BorderColor3 = Color3.fromRGB(0, 255, 204)
-ToggleButton.BorderSizePixel = 2
-ToggleButton.Image = "rbxassetid://image.png"
+ToggleButton.Name = "ToggleMenuBtn"
 ToggleButton.Parent = ScreenGui
+ToggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+ToggleButton.Position = UDim2.new(0, 20, 0, 80)
+ToggleButton.Size = UDim2.new(0, 55, 0, 55)
+ToggleButton.Image = "rbxassetid://image.png"
+
 local UICornerBtn = Instance.new("UICorner")
 UICornerBtn.CornerRadius = UDim.new(1, 0)
 UICornerBtn.Parent = ToggleButton
+
+--// 2. หน้าต่างเมนูหลัก
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 290, 0, 420)
-MainFrame.Position = UDim2.new(0.5, -145, 0.5, -210)
-MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-MainFrame.BackgroundTransparency = 0.1
-MainFrame.BorderColor3 = Color3.fromRGB(51, 51, 51)
-MainFrame.Visible = false
 MainFrame.Parent = ScreenGui
-local UICornerMain = Instance.new("UICorner")
-UICornerMain.CornerRadius = UDim.new(0, 10)
-UICornerMain.Parent = MainFrame
-local Header = Instance.new("TextLabel")
-Header.Size = UDim2.new(1, 0, 0, 40)
-Header.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-Header.Text = "  Control Panel"
-Header.TextColor3 = Color3.fromRGB(0, 255, 204)
-Header.TextSize = 16
-Header.Font = Enum.Font.SourceSansBold
-Header.TextXAlignment = Enum.TextXAlignment.Left
-Header.Parent = MainFrame
-local UICornerHeader = Instance.new("UICorner")
-UICornerHeader.CornerRadius = UDim.new(0, 10)
-UICornerHeader.Parent = Header
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MainFrame.BorderColor3 = Color3.fromRGB(50, 50, 50)
+MainFrame.Position = UDim2.new(0.5, -125, 0.5, -125)
+MainFrame.Size = UDim2.new(0, 250, 0, 260)
+MainFrame.Visible = false
+MainFrame.Active = true
+MainFrame.Draggable = true
+
+local UICornerFrame = Instance.new("UICorner")
+UICornerFrame.CornerRadius = UDim.new(0, 10)
+UICornerFrame.Parent = MainFrame
+
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Parent = MainFrame
+TitleLabel.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+TitleLabel.Size = UDim2.new(1, 0, 0, 35)
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.Text = "CONTROL MENU"
+TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+TitleLabel.TextSize = 14
+
+local UICornerTitle = Instance.new("UICorner")
+UICornerTitle.CornerRadius = UDim.new(0, 10)
+UICornerTitle.Parent = TitleLabel
+
 ToggleButton.MouseButton1Click:Connect(function()
-MainFrame.Visible = not MainFrame.Visible
+    MainFrame.Visible = not MainFrame.Visible
 end)
--- STREAMING_CHUNK:Adding Menu Toggles and Elements...
-local function createToggle(name, yPos, callback)
-local Label = Instance.new("TextLabel")
-Label.Size = UDim2.new(0, 160, 0, 30)
-Label.Position = UDim2.new(0, 15, 0, yPos)
-Label.BackgroundTransparency = 1
-Label.Text = name
-Label.TextColor3 = Color3.fromRGB(255, 255, 255)
-Label.TextSize = 14
-Label.Font = Enum.Font.SourceSansSemibold
-Label.TextXAlignment = Enum.TextXAlignment.Left
-Label.Parent = MainFrame
-local Button = Instance.new("TextButton")
-Button.Size = UDim2.new(0, 60, 0, 24)
-Button.Position = UDim2.new(1, -75, 0, yPos + 3)
-Button.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-Button.Text = "OFF"
-Button.TextColor3 = Color3.fromRGB(255, 255, 255)
-Button.TextSize = 12
-Button.Font = Enum.Font.SourceSansBold
-Button.Parent = MainFrame
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 4)
-UICorner.Parent = Button
-local state = false
-Button.MouseButton1Click:Connect(function()
-state = not state
-if state then
-Button.BackgroundColor3 = Color3.fromRGB(0, 255, 204)
-Button.TextColor3 = Color3.fromRGB(0, 0, 0)
-Button.Text = "ON"
-else
-Button.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-Button.TextColor3 = Color3.fromRGB(255, 255, 255)
-Button.Text = "OFF"
+
+local function createMenuToggle(name, yPos, callback)
+    local btn = Instance.new("TextButton")
+    btn.Parent = MainFrame
+    btn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    btn.Position = UDim2.new(0, 15, 0, yPos)
+    btn.Size = UDim2.new(0, 220, 0, 35)
+    btn.Font = Enum.Font.GothamMedium
+    btn.Text = name .. ": OFF"
+    btn.TextColor3 = Color3.fromRGB(255, 100, 100)
+    btn.TextSize = 13
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+    
+    local state = false
+    btn.MouseButton1Click:Connect(function()
+        state = not state
+        if state then
+            btn.Text = name .. ": ON"
+            btn.TextColor3 = Color3.fromRGB(100, 255, 100)
+        else
+            btn.Text = name .. ": OFF"
+            btn.TextColor3 = Color3.fromRGB(255, 100, 100)
+        end
+        callback(state)
+    end)
 end
-callback(state)
+
+--// ฟังก์ชันที่ 1: ESP (มองผู้เล่น)
+local espEnabled = false
+createMenuToggle("ESP (Players)", 45, function(state)
+    espEnabled = state
 end)
-end
--- 1. ยิงอากาศโดนหัว 100% (Magic Aim / Silent Aim - Safe Hook)
-createToggle("1. ยิงโดนหัว 100% (Magic)", 55, function(state)
-MagicAimEnabled = state
+
+RunService.RenderStepped:Connect(function()
+    if not espEnabled then 
+        for _, p in pairs(Players:GetPlayers()) do
+            if p.Character and p.Character:FindFirstChild("Highlight_ESP") then
+                p.Character.Highlight_ESP:Destroy()
+            end
+        end
+        return 
+    end
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local char = player.Character
+            local hl = char:FindFirstChild("Highlight_ESP")
+            if not hl then
+                hl = Instance.new("Highlight")
+                hl.Name = "Highlight_ESP"
+                hl.Adornee = char
+                hl.FillColor = Color3.fromRGB(255, 0, 0)
+                hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                hl.Parent = char
+            end
+        end
+    end
 end)
-local function getClosestEnemyHead()
-local closestHead = nil
-local shortestDistance = math.huge
-local mouseLocation = UserInputService:GetMouseLocation()
-for _, player in ipairs(Players:GetPlayers()) do
-if isEnemy(player) and player.Character then
-local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-if humanoid and humanoid.Health > 0 then
-local head = player.Character:FindFirstChild("Head")
-if head then
-local screenPos, onScreen = Camera:WorldToScreenPoint(head.Position)
-if onScreen then
-local distance = (Vector2.new(screenPos.X, screenPos.Y) - mouseLocation).Magnitude
-if distance < shortestDistance then
-shortestDistance = distance
-closestHead = head
-end
-end
-end
-end
-end
-end
-return closestHead
-end
-pcall(function()
-local oldNamecall
-oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-local method = getnamecallmethod()
-local args = {...}
-if MagicAimEnabled and (method == "FireServer" or method == "InvokeServer") then
-local head = getClosestEnemyHead()
-if head then
-for i, v in ipairs(args) do
-if typeof(v) == "Vector3" then
-args[i] = head.Position
-elseif typeof(v) == "Instance" and v:IsA("BasePart") then
-args[i] = head
-end
-end
-end
-end
-return oldNamecall(self, unpack(args))
+
+--// ฟังก์ชันที่ 2: NoClip (เดินทะลุกำแพง)
+local noclipEnabled = false
+createMenuToggle("NoClip", 90, function(state)
+    noclipEnabled = state
 end)
-end)
--- 2. ESP มองผู้เล่น (ไม่หลุดรอบเกม)
-local function applyESP(character)
-if not character then return end
-task.wait(0.2)
-if not character:FindFirstChild("ESP_Highlight") then
-local hl = Instance.new("Highlight")
-hl.Name = "ESP_Highlight"
-hl.FillColor = Color3.fromRGB(255, 0, 0)
-hl.OutlineColor = Color3.fromRGB(255, 255, 255)
-hl.Parent = character
-end
-end
-createToggle("2. มองผู้เล่น (ESP)", 100, function(state)
-ESPEnabled = state
-for _, player in ipairs(Players:GetPlayers()) do
-if player ~= LocalPlayer then
-if ESPEnabled then
-applyESP(player.Character)
-else
-local hl = player.Character and player.Character:FindFirstChild("ESP_Highlight")
-if hl then hl:Destroy() end
-end
-end
-end
-end)
-local function setupPlayer(player)
-player.CharacterAdded:Connect(function(char)
-if ESPEnabled and player ~= LocalPlayer then
-applyESP(char)
-end
-end)
-if player.Character and ESPEnabled and player ~= LocalPlayer then
-applyESP(player.Character)
-end
-end
-Players.PlayerAdded:Connect(setupPlayer)
-for _, player in ipairs(Players:GetPlayers()) do
-if player ~= LocalPlayer then
-setupPlayer(player)
-end
-end
--- 3. Speed (วิ่งเร็ว)
-createToggle("3. วิ่งเร็ว (Speed)", 145, function(state)
-SpeedEnabled = state
-end)
-local SpeedLabel = Instance.new("TextLabel")
-SpeedLabel.Size = UDim2.new(0, 260, 0, 18)
-SpeedLabel.Position = UDim2.new(0, 15, 0, 185)
-SpeedLabel.BackgroundTransparency = 1
-SpeedLabel.Text = "ความเร็ว: 16"
-SpeedLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-SpeedLabel.TextSize, SpeedLabel.Font = 12, Enum.Font.SourceSans
-SpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
-SpeedLabel.Parent = MainFrame
-local SpeedBox = Instance.new("TextBox")
-SpeedBox.Size = UDim2.new(0, 260, 0, 26)
-SpeedBox.Position = UDim2.new(0, 15, 0, 205)
-SpeedBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-SpeedBox.Text = "16"
-SpeedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-SpeedBox.TextSize = 13
-SpeedBox.Font = Enum.Font.SourceSans
-SpeedBox.Parent = MainFrame
-local UICornerBox = Instance.new("UICorner")
-UICornerBox.CornerRadius = UDim.new(0, 4)
-UICornerBox.Parent = SpeedBox
-SpeedBox.FocusLost:Connect(function()
-local val = tonumber(SpeedBox.Text)
-if val then
-CurrentSpeed = math.clamp(val, 16, 200)
-SpeedBox.Text = tostring(CurrentSpeed)
-SpeedLabel.Text = "ความเร็ว: " .. CurrentSpeed
-else
-SpeedBox.Text = tostring(CurrentSpeed)
-end
-end)
-RunService.Heartbeat:Connect(function()
-if SpeedEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = CurrentSpeed
-end
-end)
--- 4. NoClip (เดินทะลุกำแพง)
-createToggle("4. เดินทะลุกำแพง (NoClip)", 245, function(state)
-NoClipEnabled = state
-end)
+
 RunService.Stepped:Connect(function()
-if NoClipEnabled and LocalPlayer.Character then
-for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
-if part:IsA("BasePart") then
-part.CanCollide = false
-end
-end
-end
+    if noclipEnabled and LocalPlayer.Character then
+        for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    end
 end)
--- 5. Infinite Jump (กระโดดไม่จำกัด)
-createToggle("5. กระโดดไม่จำกัด (Inf Jump)", 290, function(state)
-InfJumpEnabled = state
+
+--// ฟังก์ชันที่ 3: Infinite Jump (กระโดดไม่จำกัด)
+local infJumpEnabled = false
+createMenuToggle("Infinite Jump", 135, function(state)
+    infJumpEnabled = state
 end)
+
 UserInputService.JumpRequest:Connect(function()
-if InfJumpEnabled and LocalPlayer.Character then
-local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-if humanoid then
-humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-end
-end
+    if infJumpEnabled and LocalPlayer.Character then
+        local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+    end
 end)
--- STREAMING_CHUNK:Draggable Window Logic...
-local dragging, dragInput, dragStart, startPos
-Header.InputBegan:Connect(function(input)
-if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-dragging = true
-dragStart = input.Position
-startPos = MainFrame.Position
-input.Changed:Connect(function()
-if input.UserInputState == Enum.UserInputState.End then
-dragging = false
-end
+
+--// ฟังก์ชันที่ 4: วิ่งเร็วอัตโนมัติ (เปิดตลอดเวลา 30)
+local autoSpeedVal = 30
+RunService.RenderStepped:Connect(function()
+    if LocalPlayer.Character then
+        local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = autoSpeedVal
+        end
+    end
 end)
-end
-end)
-Header.InputChanged:Connect(function(input)
-if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-dragInput = input
-end
-end)
-UserInputService.InputChanged:Connect(function(input)
-if input == dragInput and dragging then
-local delta = input.Position - dragStart
-MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-end
-end)
+
+local SpeedLabel = Instance.new("TextLabel")
+SpeedLabel.Parent = MainFrame
+SpeedLabel.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+SpeedLabel.Position = UDim2.new(0, 15, 0, 180)
+SpeedLabel.Size = UDim2.new(0, 220, 0, 30)
+SpeedLabel.Font = Enum.Font.Gotham
+SpeedLabel.Text = "Auto Speed: " .. autoSpeedVal .. " (Active)"
+SpeedLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+SpeedLabel.TextSize = 12
+
+local UICornerSpeed = Instance.new("UICorner")
+UICornerSpeed.CornerRadius = UDim.new(0, 6)
+UICornerSpeed.Parent = SpeedLabel
+
+print("Script Loaded Successfully!")
