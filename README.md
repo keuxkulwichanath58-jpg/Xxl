@@ -9,9 +9,7 @@ local ESPEnabled = false
 local SpeedEnabled = false
 local CurrentSpeed = 16
 local NoClipEnabled = false
-local OneShotEnabled = false
 local InfJumpEnabled = false
-local AimTargetPart = "Head"
 local function isEnemy(player)
 if player == LocalPlayer then return false end
 if LocalPlayer.Team and player.Team then
@@ -48,8 +46,8 @@ UICornerBtn.CornerRadius = UDim.new(1, 0)
 UICornerBtn.Parent = ToggleButton
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 290, 0, 480)
-MainFrame.Position = UDim2.new(0.5, -145, 0.5, -240)
+MainFrame.Size = UDim2.new(0, 290, 0, 420)
+MainFrame.Position = UDim2.new(0.5, -145, 0.5, -210)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 MainFrame.BackgroundTransparency = 0.1
 MainFrame.BorderColor3 = Color3.fromRGB(51, 51, 51)
@@ -112,34 +110,33 @@ end
 callback(state)
 end)
 end
--- 1. ยิงอากาศโดนหัว 100% (Magic Aim / Silent Aim)
+-- 1. ยิงอากาศโดนหัว 100% (Magic Aim / Silent Aim - Safe Hook)
 createToggle("1. ยิงโดนหัว 100% (Magic)", 55, function(state)
 MagicAimEnabled = state
 end)
--- STREAMING_CHUNK:Implementing Safe Magic Bullet Hook...
-local function getClosestTargetPart()
-local closestPart = nil
+local function getClosestEnemyHead()
+local closestHead = nil
 local shortestDistance = math.huge
 local mouseLocation = UserInputService:GetMouseLocation()
 for _, player in ipairs(Players:GetPlayers()) do
 if isEnemy(player) and player.Character then
 local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
 if humanoid and humanoid.Health > 0 then
-local targetPart = player.Character:FindFirstChild("Head") or player.Character:FindFirstChild("HumanoidRootPart")
-if targetPart then
-local screenPos, onScreen = Camera:WorldToScreenPoint(targetPart.Position)
+local head = player.Character:FindFirstChild("Head")
+if head then
+local screenPos, onScreen = Camera:WorldToScreenPoint(head.Position)
 if onScreen then
 local distance = (Vector2.new(screenPos.X, screenPos.Y) - mouseLocation).Magnitude
 if distance < shortestDistance then
 shortestDistance = distance
-closestPart = targetPart
+closestHead = head
 end
 end
 end
 end
 end
 end
-return closestPart
+return closestHead
 end
 pcall(function()
 local oldNamecall
@@ -147,13 +144,13 @@ oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
 local method = getnamecallmethod()
 local args = {...}
 if MagicAimEnabled and (method == "FireServer" or method == "InvokeServer") then
-local targetPart = getClosestTargetPart()
-if targetPart then
+local head = getClosestEnemyHead()
+if head then
 for i, v in ipairs(args) do
 if typeof(v) == "Vector3" then
-args[i] = targetPart.Position
+args[i] = head.Position
 elseif typeof(v) == "Instance" and v:IsA("BasePart") then
-args[i] = targetPart
+args[i] = head
 end
 end
 end
@@ -255,24 +252,8 @@ end
 end
 end
 end)
--- 5. One-Shot Ammo Dump (ยิงทีเดียวหมดแม็ก)
-createToggle("5. ยิงทีเดียวหมดแม็ก (One-Shot)", 290, function(state)
-OneShotEnabled = state
-end)
-RunService.Heartbeat:Connect(function()
-if OneShotEnabled and LocalPlayer.Character then
-local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
-if tool then
-pcall(function()
-for i = 1, 5 do
-tool:Activate()
-end
-end)
-end
-end
-end)
--- 6. Infinite Jump (กระโดดไม่จำกัด)
-createToggle("6. กระโดดไม่จำกัด (Inf Jump)", 335, function(state)
+-- 5. Infinite Jump (กระโดดไม่จำกัด)
+createToggle("5. กระโดดไม่จำกัด (Inf Jump)", 290, function(state)
 InfJumpEnabled = state
 end)
 UserInputService.JumpRequest:Connect(function()
