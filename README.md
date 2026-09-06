@@ -20,7 +20,7 @@ return LocalPlayer.Team ~= player.Team
 end
 return true
 end
--- STREAMING_CHUNK:Initializing WallCheck and Target Finder...
+-- STREAMING_CHUNK:Initializing WallCheck and Target Finder with Exact Head Precision...
 local function isVisible(targetPart)
 if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("Head") then
 return true
@@ -172,7 +172,7 @@ AimTargetPart = "Head"
 ModeButton.Text = "โหมดล็อก: เล็งไปที่ [ หัว ]"
 end
 end)
--- STREAMING_CHUNK:Implementing Main Feature Loops (Snappy Aimbot & Magic Bullet)...
+-- STREAMING_CHUNK:Implementing Main Feature Loops (Exact Head Lock & Magic Bullet)...
 local currentLockedTarget = nil
 RunService.RenderStepped:Connect(function()
 currentLockedTarget = nil
@@ -201,8 +201,9 @@ if closestPlayer then
 local targetPart = getTargetPart(closestPlayer.Character)
 if targetPart then
 currentLockedTarget = targetPart
-local offset = (AimTargetPart == "Head") and Vector3.new(0, 0.1, 0) or Vector3.new(0, 0, 0)
-local targetCFrame = CFrame.new(Camera.CFrame.Position, targetPart.Position + offset)
+-- ปรับแต่ง Offset ให้ตรงกึ่งกลางหัวเป๊ะๆ ไม่มีอาการเหลื่อม
+local exactOffset = (AimTargetPart == "Head") and Vector3.new(0, 0, 0) or Vector3.new(0, 0, 0)
+local targetCFrame = CFrame.new(Camera.CFrame.Position, targetPart.Position + exactOffset)
 Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, 1.0)
 end
 end
