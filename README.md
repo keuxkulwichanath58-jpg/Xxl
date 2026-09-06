@@ -1,18 +1,17 @@
--- STREAMING_CHUNK:Initializing Services and Variables...
+-- STREAMING_CHUNK:Initializing Services and UI...
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local MagicAimEnabled = false
-local AimTargetPart = "Head" -- "Head" หรือ "HumanoidRootPart"
 local ESPEnabled = false
 local SpeedEnabled = false
 local CurrentSpeed = 16
 local NoClipEnabled = false
 local OneShotEnabled = false
 local InfJumpEnabled = false
--- ฟังก์ชันตรวจสอบทีม (Team Check) เพื่อไม่ให้ล็อกเพื่อนร่วมทีม
+local AimTargetPart = "Head"
 local function isEnemy(player)
 if player == LocalPlayer then return false end
 if LocalPlayer.Team and player.Team then
@@ -20,40 +19,20 @@ return LocalPlayer.Team ~= player.Team
 end
 return true
 end
--- STREAMING_CHUNK:Initializing Target Finder for Magic Bullet...
-local function getClosestTargetPart()
-local closestPart = nil
-local shortestDistance = math.huge
-local mouseLocation = UserInputService:GetMouseLocation()
-for _, player in ipairs(Players:GetPlayers()) do
-if isEnemy(player) and player.Character then
-local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-if humanoid and humanoid.Health > 0 then
-local targetPart = player.Character:FindFirstChild(AimTargetPart) or player.Character:FindFirstChild("Head")
-if targetPart then
-local screenPos, onScreen = Camera:WorldToScreenPoint(targetPart.Position)
-if onScreen then
-local distance = (Vector2.new(screenPos.X, screenPos.Y) - mouseLocation).Magnitude
-if distance < shortestDistance then
-shortestDistance = distance
-closestPart = targetPart
-end
-end
-end
-end
-end
-end
-return closestPart
-end
--- STREAMING_CHUNK:Creating GUI and Custom Toggle Button (image.png)...
+-- STREAMING_CHUNK:Creating GUI and Custom Toggle Button...
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "ModMenuGui"
 ScreenGui.ResetOnSpawn = false
+pcall(function()
 if syn and syn.protect_gui then
 syn.protect_gui(ScreenGui)
 ScreenGui.Parent = game:GetService("CoreGui")
 else
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+end
+end)
+if not ScreenGui.Parent then
+ScreenGui.Parent = game:GetService("CoreGui")
 end
 local ToggleButton = Instance.new("ImageButton")
 ToggleButton.Name = "ToggleButton"
@@ -94,7 +73,7 @@ UICornerHeader.Parent = Header
 ToggleButton.MouseButton1Click:Connect(function()
 MainFrame.Visible = not MainFrame.Visible
 end)
--- STREAMING_CHUNK:Adding Toggles and GUI Elements...
+-- STREAMING_CHUNK:Adding Menu Toggles and Elements...
 local function createToggle(name, yPos, callback)
 local Label = Instance.new("TextLabel")
 Label.Size = UDim2.new(0, 160, 0, 30)
@@ -133,32 +112,36 @@ end
 callback(state)
 end)
 end
--- 1. ยิงอากาศโดนหัว 100% (Magic Bullet / Silent Aim)
-createToggle("1. ยิงโดนหัว 100% (Magic Aim)", 55, function(state)
+-- 1. ยิงอากาศโดนหัว 100% (Magic Aim / Silent Aim)
+createToggle("1. ยิงโดนหัว 100% (Magic)", 55, function(state)
 MagicAimEnabled = state
 end)
-local ModeButton = Instance.new("TextButton")
-ModeButton.Size = UDim2.new(0, 260, 0, 25)
-ModeButton.Position = UDim2.new(0, 15, 0, 95)
-ModeButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-ModeButton.Text = "เป้าหมาย: [ หัว ]"
-ModeButton.TextColor3 = Color3.fromRGB(0, 255, 204)
-ModeButton.TextSize = 13
-ModeButton.Font = Enum.Font.SourceSansBold
-ModeButton.Parent = MainFrame
-local UICornerMode = Instance.new("UICorner")
-UICornerMode.CornerRadius = UDim.new(0, 4)
-UICornerMode.Parent = ModeButton
-ModeButton.MouseButton1Click:Connect(function()
-if AimTargetPart == "Head" then
-AimTargetPart = "HumanoidRootPart"
-ModeButton.Text = "เป้าหมาย: [ ตัว ]"
-else
-AimTargetPart = "Head"
-ModeButton.Text = "เป้าหมาย: [ หัว ]"
+-- STREAMING_CHUNK:Implementing Safe Magic Bullet Hook...
+local function getClosestTargetPart()
+local closestPart = nil
+local shortestDistance = math.huge
+local mouseLocation = UserInputService:GetMouseLocation()
+for _, player in ipairs(Players:GetPlayers()) do
+if isEnemy(player) and player.Character then
+local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+if humanoid and humanoid.Health > 0 then
+local targetPart = player.Character:FindFirstChild("Head") or player.Character:FindFirstChild("HumanoidRootPart")
+if targetPart then
+local screenPos, onScreen = Camera:WorldToScreenPoint(targetPart.Position)
+if onScreen then
+local distance = (Vector2.new(screenPos.X, screenPos.Y) - mouseLocation).Magnitude
+if distance < shortestDistance then
+shortestDistance = distance
+closestPart = targetPart
 end
-end)
--- STREAMING_CHUNK:Implementing Magic Bullet Metamethod Hook...
+end
+end
+end
+end
+end
+return closestPart
+end
+pcall(function()
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
 local method = getnamecallmethod()
@@ -177,6 +160,7 @@ end
 end
 return oldNamecall(self, unpack(args))
 end)
+end)
 -- 2. ESP มองผู้เล่น (ไม่หลุดรอบเกม)
 local function applyESP(character)
 if not character then return end
@@ -189,7 +173,7 @@ hl.OutlineColor = Color3.fromRGB(255, 255, 255)
 hl.Parent = character
 end
 end
-createToggle("2. มองผู้เล่น (ESP)", 130, function(state)
+createToggle("2. มองผู้เล่น (ESP)", 100, function(state)
 ESPEnabled = state
 for _, player in ipairs(Players:GetPlayers()) do
 if player ~= LocalPlayer then
@@ -219,12 +203,12 @@ setupPlayer(player)
 end
 end
 -- 3. Speed (วิ่งเร็ว)
-createToggle("3. วิ่งเร็ว (Speed)", 175, function(state)
+createToggle("3. วิ่งเร็ว (Speed)", 145, function(state)
 SpeedEnabled = state
 end)
 local SpeedLabel = Instance.new("TextLabel")
 SpeedLabel.Size = UDim2.new(0, 260, 0, 18)
-SpeedLabel.Position = UDim2.new(0, 15, 0, 215)
+SpeedLabel.Position = UDim2.new(0, 15, 0, 185)
 SpeedLabel.BackgroundTransparency = 1
 SpeedLabel.Text = "ความเร็ว: 16"
 SpeedLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -233,7 +217,7 @@ SpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
 SpeedLabel.Parent = MainFrame
 local SpeedBox = Instance.new("TextBox")
 SpeedBox.Size = UDim2.new(0, 260, 0, 26)
-SpeedBox.Position = UDim2.new(0, 15, 0, 235)
+SpeedBox.Position = UDim2.new(0, 15, 0, 205)
 SpeedBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 SpeedBox.Text = "16"
 SpeedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -259,7 +243,7 @@ LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = CurrentSpeed
 end
 end)
 -- 4. NoClip (เดินทะลุกำแพง)
-createToggle("4. เดินทะลุกำแพง (NoClip)", 275, function(state)
+createToggle("4. เดินทะลุกำแพง (NoClip)", 245, function(state)
 NoClipEnabled = state
 end)
 RunService.Stepped:Connect(function()
@@ -272,7 +256,7 @@ end
 end
 end)
 -- 5. One-Shot Ammo Dump (ยิงทีเดียวหมดแม็ก)
-createToggle("5. ยิงทีเดียวหมดแม็ก (One-Shot)", 320, function(state)
+createToggle("5. ยิงทีเดียวหมดแม็ก (One-Shot)", 290, function(state)
 OneShotEnabled = state
 end)
 RunService.Heartbeat:Connect(function()
@@ -280,7 +264,7 @@ if OneShotEnabled and LocalPlayer.Character then
 local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
 if tool then
 pcall(function()
-for i = 1, 10 do
+for i = 1, 5 do
 tool:Activate()
 end
 end)
@@ -288,7 +272,7 @@ end
 end
 end)
 -- 6. Infinite Jump (กระโดดไม่จำกัด)
-createToggle("6. กระโดดไม่จำกัด (Inf Jump)", 365, function(state)
+createToggle("6. กระโดดไม่จำกัด (Inf Jump)", 335, function(state)
 InfJumpEnabled = state
 end)
 UserInputService.JumpRequest:Connect(function()
