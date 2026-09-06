@@ -1,4 +1,4 @@
---// Roblox Script UI (Auto Speed 30 & Safe Shooting)
+--// Roblox Script UI (Auto Speed 30, ESP, NoClip, InfJump & Triggerbot Auto-Shoot)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -36,8 +36,8 @@ MainFrame.Name = "MainFrame"
 MainFrame.Parent = ScreenGui
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 MainFrame.BorderColor3 = Color3.fromRGB(50, 50, 50)
-MainFrame.Position = UDim2.new(0.5, -125, 0.5, -125)
-MainFrame.Size = UDim2.new(0, 250, 0, 260)
+MainFrame.Position = UDim2.new(0.5, -125, 0.5, -135)
+MainFrame.Size = UDim2.new(0, 250, 0, 290)
 MainFrame.Visible = false
 MainFrame.Active = true
 MainFrame.Draggable = true
@@ -68,7 +68,7 @@ local function createMenuToggle(name, yPos, callback)
     btn.Parent = MainFrame
     btn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
     btn.Position = UDim2.new(0, 15, 0, yPos)
-    btn.Size = UDim2.new(0, 220, 0, 35)
+    btn.Size = UDim2.new(0, 220, 0, 32)
     btn.Font = Enum.Font.GothamMedium
     btn.Text = name .. ": OFF"
     btn.TextColor3 = Color3.fromRGB(255, 100, 100)
@@ -126,7 +126,7 @@ end)
 
 --// ฟังก์ชันที่ 2: NoClip (เดินทะลุกำแพง)
 local noclipEnabled = false
-createMenuToggle("NoClip", 90, function(state)
+createMenuToggle("NoClip", 83, function(state)
     noclipEnabled = state
 end)
 
@@ -142,7 +142,7 @@ end)
 
 --// ฟังก์ชันที่ 3: Infinite Jump (กระโดดไม่จำกัด)
 local infJumpEnabled = false
-createMenuToggle("Infinite Jump", 135, function(state)
+createMenuToggle("Infinite Jump", 121, function(state)
     infJumpEnabled = state
 end)
 
@@ -155,7 +155,37 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
---// ฟังก์ชันที่ 4: วิ่งเร็วอัตโนมัติ (เปิดตลอดเวลา 30)
+--// ฟังก์ชันที่ 4: Triggerbot (เล็งเป้าขาวโดนผู้เล่นแล้วยิงอัตโนมัติ)
+local triggerbotEnabled = false
+createMenuToggle("Auto-Shoot (Triggerbot)", 159, function(state)
+    triggerbotEnabled = state
+end)
+
+RunService.RenderStepped:Connect(function()
+    if not triggerbotEnabled then return end
+    
+    local mouse = LocalPlayer:GetMouse()
+    local target = mouse.Target
+    
+    if target and target.Parent then
+        local enemyModel = target.Parent
+        local enemyPlayer = Players:GetPlayerFromCharacter(enemyModel)
+        
+        -- ตรวจสอบว่าเป็นผู้เล่นอื่นและไม่ใช่ทีมเดียวกัน
+        if enemyPlayer and enemyPlayer ~= LocalPlayer then
+            if not LocalPlayer.Team or enemyPlayer.Team ~= LocalPlayer.Team then
+                local currentTool = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Tool")
+                if currentTool then
+                    pcall(function()
+                        currentTool:Activate()
+                    end)
+                end
+            end
+        end
+    end
+end)
+
+--// ฟังก์ชันที่ 5: วิ่งเร็วอัตโนมัติ (เปิดตลอดเวลา 30)
 local autoSpeedVal = 30
 RunService.RenderStepped:Connect(function()
     if LocalPlayer.Character then
@@ -169,7 +199,7 @@ end)
 local SpeedLabel = Instance.new("TextLabel")
 SpeedLabel.Parent = MainFrame
 SpeedLabel.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-SpeedLabel.Position = UDim2.new(0, 15, 0, 180)
+SpeedLabel.Position = UDim2.new(0, 15, 0, 205)
 SpeedLabel.Size = UDim2.new(0, 220, 0, 30)
 SpeedLabel.Font = Enum.Font.Gotham
 SpeedLabel.Text = "Auto Speed: " .. autoSpeedVal .. " (Active)"
@@ -180,4 +210,4 @@ local UICornerSpeed = Instance.new("UICorner")
 UICornerSpeed.CornerRadius = UDim.new(0, 6)
 UICornerSpeed.Parent = SpeedLabel
 
-print("Script Loaded Successfully!")
+print("Script Loaded Successfully with Triggerbot!")
