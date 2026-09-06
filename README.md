@@ -1,8 +1,8 @@
--- STREAMING_CHUNK:Initializing Roblox Services and Variables...
+--// Roblox Adjustable Speed Script (1 - 70)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
---// ลบ UI เก่าทิ้งถ้ามีอยู่แล้วเพื่อป้องกันการซ้ำซ้อน
+--// ป้องกันการสร้าง UI ซ้ำซ้อน
 if game.CoreGui:FindFirstChild("SpeedScriptUI") then
 game.CoreGui.SpeedScriptUI:Destroy()
 end
@@ -10,7 +10,7 @@ local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "SpeedScriptUI"
 ScreenGui.Parent = game.CoreGui
 ScreenGui.ResetOnSpawn = false
--- STREAMING_CHUNK:Creating Main Toggle Button and Window UI...
+--// ปุ่มเปิด/ปิดเมนูรูปภาพ
 local ToggleButton = Instance.new("ImageButton")
 ToggleButton.Name = "ToggleMenuBtn"
 ToggleButton.Parent = ScreenGui
@@ -21,6 +21,7 @@ ToggleButton.Image = "rbxassetid://image.png"
 local UICornerBtn = Instance.new("UICorner")
 UICornerBtn.CornerRadius = UDim.new(1, 0)
 UICornerBtn.Parent = ToggleButton
+--// หน้าต่างเมนูหลัก
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Parent = ScreenGui
@@ -48,7 +49,7 @@ UICornerTitle.Parent = TitleLabel
 ToggleButton.MouseButton1Click:Connect(function()
 MainFrame.Visible = not MainFrame.Visible
 end)
--- STREAMING_CHUNK:Implementing Speed Hack Logic and UI Elements...
+--// ตัวแปรการทำงานความเร็ว
 local currentSpeed = 16
 local speedEnabled = false
 -- ปุ่มเปิด/ปิด Speed Hack
@@ -72,7 +73,6 @@ ToggleSpeedBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
 else
 ToggleSpeedBtn.Text = "Speed Hack: OFF"
 ToggleSpeedBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
--- คืนค่าความเร็วปกติเมื่อปิด
 if LocalPlayer.Character then
 local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
 if humanoid then humanoid.WalkSpeed = 16 end
@@ -92,7 +92,7 @@ SpeedDisplayLabel.TextSize = 12
 local cornerDisplay = Instance.new("UICorner")
 cornerDisplay.CornerRadius = UDim.new(0, 6)
 cornerDisplay.Parent = SpeedDisplayLabel
--- ปุ่มเพิ่ม/ลดความเร็วแบบรวดเร็ว (-5 และ +5) หรือปรับละเอียด
+-- ปุ่มเพิ่ม/ลดความเร็ว (-5 และ +5)
 local decreaseBtn = Instance.new("TextButton")
 decreaseBtn.Parent = MainFrame
 decreaseBtn.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
@@ -125,7 +125,7 @@ increaseBtn.MouseButton1Click:Connect(function()
 currentSpeed = math.clamp(currentSpeed + 5, 1, 70)
 SpeedDisplayLabel.Text = "Speed Value: " .. currentSpeed
 end)
--- ลูปการทำงานอัปเดตความเร็วตัวละครตลอดเวลาตามค่าที่ตั้งไว้ (1 - 70)
+-- ลูปอัปเดตความเร็วตัวละครตลอดเวลา
 RunService.RenderStepped:Connect(function()
 if speedEnabled and LocalPlayer.Character then
 local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
@@ -134,4 +134,4 @@ humanoid.WalkSpeed = currentSpeed
 end
 end
 end)
-print("Adjustable Speed Script Loaded Successfully (1 to 70)!")
+print("Adjustable Speed Script Loaded Successfully!")
