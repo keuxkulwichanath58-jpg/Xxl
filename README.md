@@ -4,7 +4,7 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
-local AimbotEnabled = false
+local MagicAimEnabled = false
 local AimTargetPart = "Head" -- "Head" หรือ "HumanoidRootPart"
 local ESPEnabled = false
 local SpeedEnabled = false
@@ -20,44 +20,30 @@ return LocalPlayer.Team ~= player.Team
 end
 return true
 end
--- STREAMING_CHUNK:Initializing WallCheck and Target Finder with Exact Head Precision...
-local function isVisible(targetPart)
-if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("Head") then
-return true
-end
-local origin = LocalPlayer.Character.Head.Position
-local direction = targetPart.Position - origin
-local raycastParams = RaycastParams.new()
-raycastParams.FilterType = Enum.RaycastFilterType.Exclude
-raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
-raycastParams.IgnoreWater = true
-local result = workspace:Raycast(origin, direction, raycastParams)
-if result then
-local hitInstance = result.Instance
-local targetCharacter = targetPart.Parent
-if hitInstance:IsDescendantOf(targetCharacter) then
-return true
-else
-return false
+-- STREAMING_CHUNK:Initializing Target Finder for Magic Bullet...
+local function getClosestTargetPart()
+local closestPart = nil
+local shortestDistance = math.huge
+local mouseLocation = UserInputService:GetMouseLocation()
+for _, player in ipairs(Players:GetPlayers()) do
+if isEnemy(player) and player.Character then
+local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+if humanoid and humanoid.Health > 0 then
+local targetPart = player.Character:FindFirstChild(AimTargetPart) or player.Character:FindFirstChild("Head")
+if targetPart then
+local screenPos, onScreen = Camera:WorldToScreenPoint(targetPart.Position)
+if onScreen then
+local distance = (Vector2.new(screenPos.X, screenPos.Y) - mouseLocation).Magnitude
+if distance < shortestDistance then
+shortestDistance = distance
+closestPart = targetPart
 end
 end
-return true
-end
-local function getTargetPart(character)
-if not character then return nil end
-if AimTargetPart == "Head" then
-local head = character:FindFirstChild("Head")
-if head then return head end
-for _, child in ipairs(character:GetChildren()) do
-if child:IsA("BasePart") and (child.Name:lower():find("head") or child.Name:lower():find("upper")) then
-return child
 end
 end
-else
-local rootPart = character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Torso")
-if rootPart then return rootPart end
 end
-return character:FindFirstChild("HumanoidRootPart")
+end
+return closestPart
 end
 -- STREAMING_CHUNK:Creating GUI and Custom Toggle Button (image.png)...
 local ScreenGui = Instance.new("ScreenGui")
@@ -147,15 +133,15 @@ end
 callback(state)
 end)
 end
--- 1. ล็อกเป้าหมาย (Global Aimbot)
-createToggle("1. ล็อกเป้าหมาย (ทั่วจอ)", 55, function(state)
-AimbotEnabled = state
+-- 1. ยิงอากาศโดนหัว 100% (Magic Bullet / Silent Aim)
+createToggle("1. ยิงโดนหัว 100% (Magic Aim)", 55, function(state)
+MagicAimEnabled = state
 end)
 local ModeButton = Instance.new("TextButton")
 ModeButton.Size = UDim2.new(0, 260, 0, 25)
 ModeButton.Position = UDim2.new(0, 15, 0, 95)
 ModeButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-ModeButton.Text = "โหมดล็อก: เล็งไปที่ [ หัว ]"
+ModeButton.Text = "เป้าหมาย: [ หัว ]"
 ModeButton.TextColor3 = Color3.fromRGB(0, 255, 204)
 ModeButton.TextSize = 13
 ModeButton.Font = Enum.Font.SourceSansBold
@@ -166,66 +152,32 @@ UICornerMode.Parent = ModeButton
 ModeButton.MouseButton1Click:Connect(function()
 if AimTargetPart == "Head" then
 AimTargetPart = "HumanoidRootPart"
-ModeButton.Text = "โหมดล็อก: เล็งไปที่ [ ตัว ]"
+ModeButton.Text = "เป้าหมาย: [ ตัว ]"
 else
 AimTargetPart = "Head"
-ModeButton.Text = "โหมดล็อก: เล็งไปที่ [ หัว ]"
+ModeButton.Text = "เป้าหมาย: [ หัว ]"
 end
 end)
--- STREAMING_CHUNK:Implementing Main Feature Loops (Exact Head Lock & Magic Bullet)...
-local currentLockedTarget = nil
-RunService.RenderStepped:Connect(function()
-currentLockedTarget = nil
-if AimbotEnabled then
-local closestPlayer = nil
-local shortestDistance = math.huge
-for _, player in ipairs(Players:GetPlayers()) do
-if isEnemy(player) and player.Character then
-local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-local targetPart = getTargetPart(player.Character)
-if humanoid and humanoid.Health > 0 and targetPart then
-if isVisible(targetPart) then
-local screenPos, onScreen = Camera:WorldToScreenPoint(targetPart.Position)
-if onScreen then
-local distance = (Vector2.new(screenPos.X, screenPos.Y) - UserInputService:GetMouseLocation()).Magnitude
-if distance < shortestDistance then
-shortestDistance = distance
-closestPlayer = player
-end
-end
-end
-end
-end
-end
-if closestPlayer then
-local targetPart = getTargetPart(closestPlayer.Character)
-if targetPart then
-currentLockedTarget = targetPart
--- ปรับแต่ง Offset ให้ตรงกึ่งกลางหัวเป๊ะๆ ไม่มีอาการเหลื่อม
-local exactOffset = (AimTargetPart == "Head") and Vector3.new(0, 0, 0) or Vector3.new(0, 0, 0)
-local targetCFrame = CFrame.new(Camera.CFrame.Position, targetPart.Position + exactOffset)
-Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, 1.0)
-end
-end
-end
-end)
--- ระบบกระสุนพุ่งเข้าเป้าหมาย 100% (Silent Aim / Magic Bullet)
+-- STREAMING_CHUNK:Implementing Magic Bullet Metamethod Hook...
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
 local method = getnamecallmethod()
 local args = {...}
-if AimbotEnabled and currentLockedTarget and (method == "FireServer" or method == "InvokeServer") then
+if MagicAimEnabled and (method == "FireServer" or method == "InvokeServer") then
+local targetPart = getClosestTargetPart()
+if targetPart then
 for i, v in ipairs(args) do
 if typeof(v) == "Vector3" then
-args[i] = currentLockedTarget.Position
+args[i] = targetPart.Position
 elseif typeof(v) == "Instance" and v:IsA("BasePart") then
-args[i] = currentLockedTarget
+args[i] = targetPart
+end
 end
 end
 end
 return oldNamecall(self, unpack(args))
 end)
--- 2. ESP
+-- 2. ESP มองผู้เล่น (ไม่หลุดรอบเกม)
 local function applyESP(character)
 if not character then return end
 task.wait(0.2)
@@ -266,7 +218,7 @@ if player ~= LocalPlayer then
 setupPlayer(player)
 end
 end
--- 3. Speed
+-- 3. Speed (วิ่งเร็ว)
 createToggle("3. วิ่งเร็ว (Speed)", 175, function(state)
 SpeedEnabled = state
 end)
@@ -306,7 +258,7 @@ if SpeedEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChi
 LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = CurrentSpeed
 end
 end)
--- 4. NoClip
+-- 4. NoClip (เดินทะลุกำแพง)
 createToggle("4. เดินทะลุกำแพง (NoClip)", 275, function(state)
 NoClipEnabled = state
 end)
@@ -319,7 +271,7 @@ end
 end
 end
 end)
--- 5. One-Shot Ammo Dump
+-- 5. One-Shot Ammo Dump (ยิงทีเดียวหมดแม็ก)
 createToggle("5. ยิงทีเดียวหมดแม็ก (One-Shot)", 320, function(state)
 OneShotEnabled = state
 end)
@@ -347,7 +299,7 @@ humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
 end
 end
 end)
--- Draggable Window
+-- STREAMING_CHUNK:Draggable Window Logic...
 local dragging, dragInput, dragStart, startPos
 Header.InputBegan:Connect(function(input)
 if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
