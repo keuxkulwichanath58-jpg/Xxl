@@ -1,4 +1,4 @@
---// Roblox Script UI (Auto Speed 30, ESP, NoClip, InfJump & Triggerbot Auto-Shoot)
+--// Roblox Script UI (Auto Speed 30, ESP, NoClip, InfJump & Fixed Triggerbot)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -155,7 +155,7 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
---// ฟังก์ชันที่ 4: Triggerbot (เล็งเป้าขาวโดนผู้เล่นแล้วยิงอัตโนมัติ)
+--// ฟังก์ชันที่ 4: Triggerbot (ใช้ Raycast จากกลางจอ ตรวจจับศัตรูแล้วยิงออโต้)
 local triggerbotEnabled = false
 createMenuToggle("Auto-Shoot (Triggerbot)", 159, function(state)
     triggerbotEnabled = state
@@ -164,14 +164,21 @@ end)
 RunService.RenderStepped:Connect(function()
     if not triggerbotEnabled then return end
     
-    local mouse = LocalPlayer:GetMouse()
-    local target = mouse.Target
+    local viewportSize = Camera.ViewportSize
+    local ray = Camera:ViewportPointToRay(viewportSize.X / 2, viewportSize.Y / 2)
     
-    if target and target.Parent then
-        local enemyModel = target.Parent
-        local enemyPlayer = Players:GetPlayerFromCharacter(enemyModel)
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+    if LocalPlayer.Character then
+        raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
+    end
+    
+    local result = Workspace:Raycast(ray.Origin, ray.Direction * 1000, raycastParams)
+    
+    if result and result.Instance then
+        local hitModel = result.Instance.Parent
+        local enemyPlayer = Players:GetPlayerFromCharacter(hitModel)
         
-        -- ตรวจสอบว่าเป็นผู้เล่นอื่นและไม่ใช่ทีมเดียวกัน
         if enemyPlayer and enemyPlayer ~= LocalPlayer then
             if not LocalPlayer.Team or enemyPlayer.Team ~= LocalPlayer.Team then
                 local currentTool = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Tool")
@@ -210,4 +217,4 @@ local UICornerSpeed = Instance.new("UICorner")
 UICornerSpeed.CornerRadius = UDim.new(0, 6)
 UICornerSpeed.Parent = SpeedLabel
 
-print("Script Loaded Successfully with Triggerbot!")
+print("Script Loaded Successfully with Fixed Raycast Triggerbot!")
