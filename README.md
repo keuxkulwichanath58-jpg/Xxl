@@ -1,7 +1,8 @@
---// Roblox Script UI (Auto Speed 30, ESP, NoClip, InfJump & Fixed Triggerbot)
+--// Roblox Script UI (Auto Speed 30, ESP, NoClip, InfJump & Working Auto-Shoot/Magic Bullet)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 local Workspace = game:GetService("Workspace")
 
 local LocalPlayer = Players.LocalPlayer
@@ -155,14 +156,14 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
---// ฟังก์ชันที่ 4: Triggerbot (ใช้ Raycast จากกลางจอ ตรวจจับศัตรูแล้วยิงออโต้)
-local triggerbotEnabled = false
-createMenuToggle("Auto-Shoot (Triggerbot)", 159, function(state)
-    triggerbotEnabled = state
+--// ฟังก์ชันที่ 4: Auto-Shoot & Magic Bullet (ยิงอัตโนมัติเมื่อเป้าเล็งโดนศัตรู)
+local autoShootEnabled = false
+createMenuToggle("Auto-Shoot (Trigger)", 159, function(state)
+    autoShootEnabled = state
 end)
 
 RunService.RenderStepped:Connect(function()
-    if not triggerbotEnabled then return end
+    if not autoShootEnabled then return end
     
     local viewportSize = Camera.ViewportSize
     local ray = Camera:ViewportPointToRay(viewportSize.X / 2, viewportSize.Y / 2)
@@ -181,12 +182,12 @@ RunService.RenderStepped:Connect(function()
         
         if enemyPlayer and enemyPlayer ~= LocalPlayer then
             if not LocalPlayer.Team or enemyPlayer.Team ~= LocalPlayer.Team then
-                local currentTool = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Tool")
-                if currentTool then
-                    pcall(function()
-                        currentTool:Activate()
-                    end)
-                end
+                -- จำลองการคลิกเมาส์ซ้ายหรือกดหน้าจอเพื่อยิง
+                pcall(function()
+                    VirtualInputManager:SendMouseButtonEvent(viewportSize.X / 2, viewportSize.Y / 2, 0, true, game, 1)
+                    task.wait(0.05)
+                    VirtualInputManager:SendMouseButtonEvent(viewportSize.X / 2, viewportSize.Y / 2, 0, false, game, 1)
+                end)
             end
         end
     end
@@ -217,4 +218,4 @@ local UICornerSpeed = Instance.new("UICorner")
 UICornerSpeed.CornerRadius = UDim.new(0, 6)
 UICornerSpeed.Parent = SpeedLabel
 
-print("Script Loaded Successfully with Fixed Raycast Triggerbot!")
+print("Script Loaded Successfully with VirtualInput Auto-Shoot!")
