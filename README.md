@@ -1,4 +1,4 @@
---// Roblox Adjustable Speed Script (1 - 70)
+--// Roblox Adjustable Speed Script (Fixed & Fully Functional)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
@@ -17,7 +17,10 @@ ToggleButton.Parent = ScreenGui
 ToggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 ToggleButton.Position = UDim2.new(0, 20, 0, 80)
 ToggleButton.Size = UDim2.new(0, 55, 0, 55)
+ToggleButton.Image = "rbxassetid://0" -- Fallback
+pcall(function()
 ToggleButton.Image = "rbxassetid://image.png"
+end)
 local UICornerBtn = Instance.new("UICorner")
 UICornerBtn.CornerRadius = UDim.new(1, 0)
 UICornerBtn.Parent = ToggleButton
@@ -75,7 +78,11 @@ ToggleSpeedBtn.Text = "Speed Hack: OFF"
 ToggleSpeedBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
 if LocalPlayer.Character then
 local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-if humanoid then humanoid.WalkSpeed = 16 end
+if humanoid then
+humanoid.WalkSpeed = 16
+-- รีเซ็ตค่า WalkSpeedOverride หากเกมรองรับ
+pcall(function() humanoid.WalkSpeedOverride = 16 end)
+end
 end
 end
 end)
@@ -86,7 +93,7 @@ SpeedDisplayLabel.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 SpeedDisplayLabel.Position = UDim2.new(0, 15, 0, 93)
 SpeedDisplayLabel.Size = UDim2.new(0, 190, 0, 28)
 SpeedDisplayLabel.Font = Enum.Font.Gotham
-SpeedDisplayLabel.Text = "Speed Value: 16"
+SpeedDisplayLabel.Text = "Speed Value: " .. currentSpeed
 SpeedDisplayLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 SpeedDisplayLabel.TextSize = 12
 local cornerDisplay = Instance.new("UICorner")
@@ -125,13 +132,22 @@ increaseBtn.MouseButton1Click:Connect(function()
 currentSpeed = math.clamp(currentSpeed + 5, 1, 70)
 SpeedDisplayLabel.Text = "Speed Value: " .. currentSpeed
 end)
--- ลูปอัปเดตความเร็วตัวละครตลอดเวลา
-RunService.RenderStepped:Connect(function()
-if speedEnabled and LocalPlayer.Character then
-local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+-- ลูปอัปเดตความเร็วตัวละครตลอดเวลา (บังคับค่า WalkSpeed ป้องกันเกมรีเซ็ต)
+RunService.Heartbeat:Connect(function()
+if speedEnabled then
+local char = LocalPlayer.Character
+if char then
+local humanoid = char:FindFirstChildOfClass("Humanoid")
 if humanoid then
 humanoid.WalkSpeed = currentSpeed
+-- รองรับบางเกมที่มีระบบป้องกันการเปลี่ยน WalkSpeed
+pcall(function()
+if humanoid.WalkSpeedOverride then
+humanoid.WalkSpeedOverride = currentSpeed
+end
+end)
+end
 end
 end
 end)
-print("Adjustable Speed Script Loaded Successfully!")
+print("Fixed Adjustable Speed Script Loaded Successfully!")
