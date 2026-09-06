@@ -11,19 +11,7 @@ local SpeedEnabled = false
 local CurrentSpeed = 16
 local NoClipEnabled = false
 local OneShotEnabled = false
-local FOVEnabled = true
-local FOVRadius = 150 -- ขนาดรัศมีวงกลม FOV เริ่มต้น
--- สร้างวงกลม FOV บนหน้าจอด้วย Drawing API พร้อมระบบสำรอง
-local FOVCircle = nil
-pcall(function()
-FOVCircle = Drawing.new("Circle")
-FOVCircle.Visible = true
-FOVCircle.Thickness = 2
-FOVCircle.NumSides = 64
-FOVCircle.Radius = FOVRadius
-FOVCircle.Filled = false
-FOVCircle.Transparency = 1
-end)
+local InfJumpEnabled = false
 -- ฟังก์ชันตรวจสอบทีม (Team Check) เพื่อไม่ให้ล็อกเพื่อนร่วมทีม
 local function isEnemy(player)
 if player == LocalPlayer then return false end
@@ -88,7 +76,7 @@ ToggleButton.Position = UDim2.new(0, 20, 0, 20)
 ToggleButton.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 ToggleButton.BorderColor3 = Color3.fromRGB(0, 255, 204)
 ToggleButton.BorderSizePixel = 2
-ToggleButton.Image = "rbxassetid://image.png" -- ใช้รูปภาพของคุณ
+ToggleButton.Image = "rbxassetid://image.png"
 ToggleButton.Parent = ScreenGui
 local UICornerBtn = Instance.new("UICorner")
 UICornerBtn.CornerRadius = UDim.new(1, 0)
@@ -108,7 +96,7 @@ UICornerMain.Parent = MainFrame
 local Header = Instance.new("TextLabel")
 Header.Size = UDim2.new(1, 0, 0, 40)
 Header.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-Header.Text = "  Control Panel (Rainbow FOV)"
+Header.Text = "  Control Panel"
 Header.TextColor3 = Color3.fromRGB(0, 255, 204)
 Header.TextSize = 16
 Header.Font = Enum.Font.SourceSansBold
@@ -159,8 +147,8 @@ end
 callback(state)
 end)
 end
--- 1. ล็อกเป้าหมาย
-createToggle("1. ล็อกเป้าหมาย (ในวง FOV)", 55, function(state)
+-- 1. ล็อกเป้าหมาย (Global Aimbot)
+createToggle("1. ล็อกเป้าหมาย (ทั่วจอ)", 55, function(state)
 AimbotEnabled = state
 end)
 local ModeButton = Instance.new("TextButton")
@@ -184,20 +172,13 @@ AimTargetPart = "Head"
 ModeButton.Text = "โหมดล็อก: เล็งไปที่ [ หัว ]"
 end
 end)
--- STREAMING_CHUNK:Implementing Main Feature Loops (Rainbow FOV, Snappy Aimbot & Magic Bullet)...
+-- STREAMING_CHUNK:Implementing Main Feature Loops (Snappy Aimbot & Magic Bullet)...
 local currentLockedTarget = nil
 RunService.RenderStepped:Connect(function()
-local mousePos = UserInputService:GetMouseLocation()
-if FOVCircle then
-FOVCircle.Position = mousePos
-FOVCircle.Visible = FOVEnabled and AimbotEnabled
-local hue = tick() % 5 / 5
-FOVCircle.Color = Color3.fromHSV(hue, 1, 1)
-end
 currentLockedTarget = nil
 if AimbotEnabled then
 local closestPlayer = nil
-local shortestDistance = FOVRadius -- จำกัดภายในวง FOV เท่านั้น
+local shortestDistance = math.huge
 for _, player in ipairs(Players:GetPlayers()) do
 if isEnemy(player) and player.Character then
 local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
@@ -206,7 +187,7 @@ if humanoid and humanoid.Health > 0 and targetPart then
 if isVisible(targetPart) then
 local screenPos, onScreen = Camera:WorldToScreenPoint(targetPart.Position)
 if onScreen then
-local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+local distance = (Vector2.new(screenPos.X, screenPos.Y) - UserInputService:GetMouseLocation()).Magnitude
 if distance < shortestDistance then
 shortestDistance = distance
 closestPlayer = player
@@ -221,14 +202,13 @@ local targetPart = getTargetPart(closestPlayer.Character)
 if targetPart then
 currentLockedTarget = targetPart
 local offset = (AimTargetPart == "Head") and Vector3.new(0, 0.1, 0) or Vector3.new(0, 0, 0)
--- ล็อกแรงและเร็วกระชากทันที (Snappy Lock 1.0)
 local targetCFrame = CFrame.new(Camera.CFrame.Position, targetPart.Position + offset)
 Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, 1.0)
 end
 end
 end
 end)
--- ระบบยิงอากาศโดนหัว 100% (Magic Bullet / Silent Aim Hook)
+-- ระบบกระสุนพุ่งเข้าเป้าหมาย 100% (Silent Aim / Magic Bullet)
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
 local method = getnamecallmethod()
@@ -244,7 +224,7 @@ end
 end
 return oldNamecall(self, unpack(args))
 end)
--- 2. ESP (ไม่หลุดรอบเกม)
+-- 2. ESP
 local function applyESP(character)
 if not character then return end
 task.wait(0.2)
@@ -354,37 +334,16 @@ end)
 end
 end
 end)
--- 6. FOV Size Adjuster (สูงสุด 360)
-local FOVLabel = Instance.new("TextLabel")
-FOVLabel.Size = UDim2.new(0, 260, 0, 18)
-FOVLabel.Position = UDim2.new(0, 15, 0, 360)
-FOVLabel.BackgroundTransparency = 1
-FOVLabel.Text = "ขนาดวง FOV: 150"
-FOVLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-FOVLabel.TextSize, FOVLabel.Font = 12, Enum.Font.SourceSans
-FOVLabel.TextXAlignment = Enum.TextXAlignment.Left
-FOVLabel.Parent = MainFrame
-local FOVBox = Instance.new("TextBox")
-FOVBox.Size = UDim2.new(0, 260, 0, 26)
-FOVBox.Position = UDim2.new(0, 15, 0, 380)
-FOVBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-FOVBox.Text = "150"
-FOVBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-FOVBox.TextSize = 13
-FOVBox.Font = Enum.Font.SourceSans
-FOVBox.Parent = MainFrame
-local UICornerFOV = Instance.new("UICorner")
-UICornerFOV.CornerRadius = UDim.new(0, 4)
-UICornerFOV.Parent = FOVBox
-FOVBox.FocusLost:Connect(function()
-local val = tonumber(FOVBox.Text)
-if val then
-FOVRadius = math.clamp(val, 10, 360)
-FOVBox.Text = tostring(FOVRadius)
-if FOVCircle then FOVCircle.Radius = FOVRadius end
-FOVLabel.Text = "ขนาดวง FOV: " .. FOVRadius
-else
-FOVBox.Text = tostring(FOVRadius)
+-- 6. Infinite Jump (กระโดดไม่จำกัด)
+createToggle("6. กระโดดไม่จำกัด (Inf Jump)", 365, function(state)
+InfJumpEnabled = state
+end)
+UserInputService.JumpRequest:Connect(function()
+if InfJumpEnabled and LocalPlayer.Character then
+local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+if humanoid then
+humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+end
 end
 end)
 -- Draggable Window
